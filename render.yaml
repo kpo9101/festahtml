@@ -10,7 +10,7 @@ services:
         value: nosniff
       - path: /*
         name: Referrer-Policy
-        value: no-referrer
+        value: strict-origin-when-cross-origin
       - path: /*
         name: Permissions-Policy
         value: geolocation=(), microphone=(), camera=()
