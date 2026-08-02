@@ -1378,6 +1378,29 @@ class MB{
     }
     return this;
   }
+  /* partial sphere shell, pivot at centre. phFront/phBack are polar limits
+     measured from the top pole, lerped around the ring so hair can sit high
+     over the face and low at the back. */
+  dome(r, phFront, phBack, seg, rings){
+    seg = seg||16; rings = rings||8;
+    const base = this.vcount;
+    for(let j=0;j<=rings;j++){
+      for(let s=0;s<=seg;s++){
+        const th = s/seg*TAU;
+        const front = (Math.sin(th)+1)*0.5;          // 1 at +Z (face), 0 at -Z
+        const phMax = lerp(phBack, phFront, front);
+        const ph = (j/rings)*phMax;
+        const sp = Math.sin(ph), cp = Math.cos(ph);
+        const nx = Math.cos(th)*sp, ny = cp, nz = Math.sin(th)*sp;
+        this.vert(nx*r, ny*r, nz*r, nx,ny,nz, s/seg, 1-j/rings);
+      }
+    }
+    for(let j=0;j<rings;j++) for(let s=0;s<seg;s++){
+      const a=base+j*(seg+1)+s, c=a+seg+1;
+      this.i.push(a,c,a+1, a+1,c,c+1);
+    }
+    return this;
+  }
   /* capsule aligned Y, pivot bottom */
   capsule(r,h,seg){
     seg = seg||10;
@@ -1610,7 +1633,9 @@ void main(){
   bool leafy = mat > 0.9;
   if(leafy && dot(N,V) < 0.0) N = -N;
   float ndl = dot(N, uSunDir);
-  float wrap = leafy ? 0.5 : 0.22;
+  /* soft, high-key terminator — pastel surfaces need a wide wrap or they
+     read as muddy grey on the shadow side */
+  float wrap = leafy ? 0.5 : 0.34;
   float diff = clamp((ndl + wrap)/(1.0+wrap), 0.0, 1.0);
   float sh = shadowPCF(vSh, max(ndl,0.0));
   sh = mix(1.0, sh, uShadowStr);
@@ -2725,46 +2750,55 @@ const ARCH = [
     pref:{ hunger:1.15, thirst:1.0, restroom:1.5, fun:0.95, rest:1.35, shop:0.85, cool:1.25, photo:0.9 },
     likes:['pocha','friedtruck','restroom','shade','bench','craftbooth','photo'],
     patience:0.72, spend:1.25, speed:0.86, noiseTol:0.6, crowdTol:0.62, snsRate:0.5,
-    colors:['#e8734f','#4f93e8','#e8c04f','#7fc98f'],
+    colors:['#ffd9e2','#cfe8ff','#fff2c9','#d9f2e6','#ffe0cc','#e8f0d8'],
     quote:{ ko:['아이가 화장실 찾아요','그늘 어디 없나…','줄이 너무 길다','여기 사진 예쁘게 나온다'],
             en:['Kid needs a restroom','Any shade around?','This line is too long','Great photo spot here'] } },
   { id:'couple', ko:'커플', en:'Couple', g:'💑', w:0.20,
     pref:{ hunger:1.0, thirst:1.05, restroom:1.0, fun:1.2, rest:1.1, shop:1.15, cool:1.0, photo:1.6 },
     likes:['photo','wellness','bingsu','goods','smallstage','beer'],
     patience:0.9, spend:1.35, speed:0.92, noiseTol:0.85, crowdTol:0.8, snsRate:1.35,
-    colors:['#ff7ea8','#9b8cff','#5fd0e8','#ffb347'],
+    colors:['#ffd6e8','#e8dcff','#d0f0f5','#ffe6cc','#f7d9ec','#dce8ff'],
     quote:{ ko:['노을 보러 가자','여기서 한 장 찍자','분위기 진짜 좋다','조명이 예쁘네'],
             en:['Let’s catch the sunset','One photo here','The vibe is great','Love these lights'] } },
   { id:'youth', ko:'청년', en:'Youth', g:'🕺', w:0.22,
     pref:{ hunger:1.05, thirst:1.2, restroom:0.9, fun:1.6, rest:0.7, shop:1.0, cool:0.9, photo:1.3 },
     likes:['mainstage','smallstage','beer','photo','surfschool','goods'],
     patience:1.25, spend:1.1, speed:1.12, noiseTol:1.5, crowdTol:1.35, snsRate:2.0,
-    colors:['#4fe8c0','#ff5f6d','#ffd166','#6cb6ff'],
+    colors:['#d9f2e6','#ffd9dd','#fff2c9','#cfe8ff','#e0f7f2','#f0dcff'],
     quote:{ ko:['공연 앞자리 가자!','이거 올려야 돼','사람 진짜 많다','분위기 미쳤다'],
             en:['Front row, go!','Gotta post this','So many people','This is unreal'] } },
   { id:'foodie', ko:'미식가', en:'Foodie', g:'🍜', w:0.16,
     pref:{ hunger:2.0, thirst:1.3, restroom:1.0, fun:0.8, rest:0.9, shop:0.9, cool:1.0, photo:1.0 },
     likes:['pocha','friedtruck','beer','bingsu','coffee'],
     patience:0.8, spend:1.7, speed:0.95, noiseTol:0.9, crowdTol:0.85, snsRate:1.2,
-    colors:['#e8a33a','#e8563f','#8b5e3c','#f0d060'],
+    colors:['#ffe0cc','#ffd9dd','#f2e3c6','#fff2c9','#f7d9c0','#ffeacc'],
     quote:{ ko:['이 집이 맛집이래','다음은 뭐 먹지','줄 서서 먹을 맛인가?','냄새 좋다'],
             en:['This is the famous one','What’s next?','Worth the queue?','Smells amazing'] } },
   { id:'tourist', ko:'관광객', en:'Tourist', g:'🧳', w:0.12,
     pref:{ hunger:1.0, thirst:1.1, restroom:1.1, fun:1.15, rest:1.0, shop:1.4, cool:1.05, photo:1.4 },
     likes:['goods','info','photo','mainstage','craftbooth'],
     patience:1.0, spend:1.45, speed:0.9, noiseTol:1.0, crowdTol:0.95, snsRate:1.5,
-    colors:['#6cb6ff','#a8d86f','#ffb347','#d0a0e8'],
+    colors:['#cfe8ff','#e6f5d0','#ffe9c9','#f0dcff','#d8eef7','#fdf0d8'],
     quote:{ ko:['안내소가 어디죠?','부산 처음이에요','기념품 사야지','여기가 다대포구나'],
             en:['Where’s the info desk?','First time in Busan','Need a souvenir','So this is Dadaepo'] } },
   { id:'surfer', ko:'서퍼', en:'Surfer', g:'🏄', w:0.06,
     pref:{ hunger:1.1, thirst:1.4, restroom:0.85, fun:1.4, rest:0.85, shop:0.7, cool:1.3, photo:1.0 },
     likes:['surfschool','water','bingsu','beer','wellness'],
     patience:1.15, spend:0.9, speed:1.2, noiseTol:1.2, crowdTol:1.1, snsRate:1.1,
-    colors:['#3fb0e0','#4fe8c0','#ffd166','#ff8f4f'],
+    colors:['#c9ecf5','#d9f2e6','#fff2c9','#ffd9cc','#d0eaf7','#e8f7e0'],
     quote:{ ko:['파도 좋다','물 들어온다','보드 빌려야지','바다다!'],
             en:['Waves look good','Tide’s coming','Gotta rent a board','The sea!'] } },
 ];
 const ARCH_BY = {}; for(const a of ARCH) ARCH_BY[a.id] = a;
+
+/* pastel wardrobe — soft, low-saturation, high-value (see art reference) */
+const PAL_HAIR  = ['#4a3a30','#2e2622','#6b4f38','#8a6a48','#c9a370','#e2c089',
+                   '#f0b8c8','#d8a8e0','#a8c4e8','#9fd8d0','#c8b0e0','#e89a9a','#7a6a5e','#1f1c1a'];
+const PAL_PANTS = ['#93a9c4','#aeb8c6','#7e8fa3','#c6b7a6','#9fb8a6','#d2c6b6','#6d7f92','#b09a8c','#8f8fa8','#c9c2d4'];
+const PAL_HAT   = ['#ffffff','#ffd9e2','#cfe8ff','#ffeeb0','#d9f2e6','#ff9eb4','#a8c8e8',
+                   '#f2e3c6','#e8b8d4','#c2e6f2','#f7c9a8','#bfe0c2','#e0d4f5','#fdfdfd'];
+const PAL_BAG   = ['#ffd9e2','#cfe8ff','#ffeeb0','#d9f2e6','#e0d4f5','#f7c9a8','#f0f2f5','#c9d8e8'];
+const PAL_SKIN  = ['#ffe2cf','#fbd6bd','#f3c6a6','#e8b48c','#d69a70','#bf7f56','#9c6242'];
 
 const KO_NAMES = ['민서','지훈','서연','도윤','하은','시우','예린','준우','다은','건우','수아','현우','유진','태영','소율','재민','나윤','성호','채원','동현'];
 const EN_NAMES = ['Mina','Jihun','Seoyeon','Doyun','Haeun','Siwoo','Yerin','Junwoo','Daeun','Gunwoo','Sua','Hyunwoo','Yujin','Taeyoung','Soyul','Jaemin','Nayoon','Sungho','Chaewon','Donghyun'];
@@ -3622,61 +3656,107 @@ function buildFacilityMeshes(){
   }
 }
 /* ------------------------- character meshes ------------------------- */
-/*  pivot conventions:  body & legs pivot at hip (y=0), head pivots at neck (y=0)
-    world placement:  hip = groundY + 0.46,  neck = groundY + 1.30           */
+/*  Chibi ~3-head proportions: the head is wider than the shoulders.
+    pivot conventions:  body / legs / bag pivot at hip (y=0)
+                        head / hair / hats pivot at neck (y=0)
+    world placement:    hip = groundY + 0.52*s,  neck = groundY + 1.06*s
+    total height ≈ 1.63 * s, of which the head is ~33%                     */
+const CH = { hip:0.52, neck:1.06, headR:0.28, headY:0.30 };
+
 function buildCharMeshes(){
-  /* --- torso + arms (tinted = shirt) --- */
+  /* --- torso + stubby arms (tinted = shirt) --- */
   { const b = mb();
     b.C('#ffffff', MAT.TINT);
-    // torso: tapered rounded box hip(0) -> shoulder(0.84)
-    b.push().T(0,0.42,0).box(0.40,0.84,0.25,{taper:1.06}).pop();
-    b.push().T(0,0.84,0).S(1,0.62,1).sphere(0.20,10,6).pop();
-    // arms
+    b.push().T(0,0.28,0).box(0.40,0.50,0.25,{taper:0.95}).pop();
+    b.push().T(0,0.51,0).S(1,0.46,1).sphere(0.205,12,6).pop();   // shoulders
+    b.push().T(0,0.06,0).S(1,0.50,1).sphere(0.205,12,6).pop();   // hips
     for(const sx of [-1,1]){
-      b.push().T(sx*0.235,0.74,0).RZ(sx*0.16).capsule(0.072,0.62,7).pop();
+      b.push().T(sx*0.225,0.12,0).RZ(sx*0.07).capsule(0.067,0.36,8).pop();
     }
     RD.addMesh('npc_body', b.build('npc_body'));
   }
-  /* --- legs (single, mirrored by instance) --- */
+  /* --- leg + white-soled sneaker (single, mirrored per instance) --- */
   { const b = mb();
     b.C('#ffffff', MAT.TINT);
-    b.push().T(0,-0.46,0).capsule(0.082,0.46,7).pop();
-    b.C('#22262e', MAT.FIXED);
-    b.push().T(0,-0.47,0.028).box(0.16,0.075,0.24,{bottom:true}).pop();
+    b.push().T(0,-0.38,0).capsule(0.077,0.38,8).pop();
+    b.C('#eef2f6', MAT.FIXED);                                   // shoe upper
+    b.push().T(0,-0.418,0.022).box(0.152,0.078,0.235).pop();
+    b.C('#fdfefe', MAT.FIXED);                                   // white sole
+    b.push().T(0,-0.487,0.030).box(0.163,0.062,0.262).pop();
     RD.addMesh('npc_leg', b.build('npc_leg'));
   }
-  /* --- head (tinted = skin) --- */
+  /* --- head (tinted = skin): big, soft, dot eyes, no mouth --- */
   { const b = mb();
+    const R = CH.headR, Y = CH.headY;
     b.C('#ffffff', MAT.TINT);
-    b.push().T(0,0.06,0).cyl(0.062,0.072,0.09,7).pop();
-    b.push().T(0,0.24,0).S(0.93,1.02,0.9).sphere(0.155,12,8).pop();
-    b.C('#2a2118', MAT.FIXED);
-    for(const sx of [-1,1]) b.push().T(sx*0.055,0.27,0.132).S(1,1.25,0.5).sphere(0.021,6,4).pop();
+    b.push().T(0,0.03,0).cyl(0.072,0.082,0.09,7).pop();          // neck
+    b.push().T(0,Y,0).S(1.0,0.97,0.95).sphere(R,14,9).pop();
+    for(const sx of [-1,1]) b.push().T(sx*(R-0.01),Y-0.01,0).S(0.45,1,0.75).sphere(0.062,6,4).pop();
+    b.C('#3b302a', MAT.FIXED);                                   // eyes
+    for(const sx of [-1,1]) b.push().T(sx*0.108,Y+0.005,R*0.905).S(1,1.4,0.45).sphere(0.038,8,5).pop();
+    b.C('#ffffff', MAT.FIXED);                                   // catchlight
+    for(const sx of [-1,1]) b.push().T(sx*0.108+0.014,Y+0.038,R*0.955).S(1,1,0.35).sphere(0.0135,5,4).pop();
+    b.C('#ffb9c4', MAT.FIXED);                                   // blush
+    for(const sx of [-1,1]) b.push().T(sx*0.176,Y-0.062,R*0.79).S(1,0.7,0.3).sphere(0.048,7,4).pop();
     RD.addMesh('npc_head', b.build('npc_head'));
   }
-  /* --- hair (tinted) --- */
+  /* --- hair shell (tinted): high over the face, low at the back --- */
   { const b = mb();
     b.C('#ffffff', MAT.TINT);
-    b.push().T(0,0.245,-0.008).S(1.0,0.92,1.0).sphere(0.168,12,7,{hemi:true}).pop();
-    b.push().T(0,0.30,-0.09).S(1.0,0.55,0.7).sphere(0.15,10,6).pop();
+    b.push().T(0,CH.headY,0).S(1.035,1.0,1.02).dome(CH.headR, 1.28, 2.02, 16, 8).pop();
+    b.push().T(0,CH.headY+0.10,-0.055).S(1.0,0.62,0.92).sphere(0.245,12,6).pop();  // back volume
     RD.addMesh('npc_hair', b.build('npc_hair'));
   }
-  /* --- staff hi-vis vest --- */
-  { const b = mb();
-    b.C('#ffe14a', MAT.FIXED);
-    b.push().T(0,0.46,0).box(0.435,0.60,0.285).pop();
-    b.C('#f4f7fa', MAT.FIXED);
-    b.push().T(0,0.55,0.146).box(0.42,0.055,0.01).pop();
-    b.push().T(0,0.36,0.146).box(0.42,0.055,0.01).pop();
-    b.push().T(0,0.55,-0.146).box(0.42,0.055,0.01).pop();
-    b.C('#2ec4b6', MAT.FIXED).push().T(0,0.90,0).S(1,0.35,1).sphere(0.20,10,6).pop();
-    RD.addMesh('npc_vest', b.build('npc_vest'));
+  /* --- hats (tinted). All share the neck pivot so they drop straight on. --- */
+  { /* baseball cap: crown + bill (the bill's back half hides inside the crown) */
+    const b = mb();
+    b.C('#ffffff', MAT.TINT);
+    b.push().T(0,CH.headY,0).S(1.055,1.0,1.05).dome(CH.headR, 1.16, 1.30, 18, 7).pop();
+    b.push().T(0,CH.headY+0.062,0.155).S(1.0,0.16,1.13).sphere(0.208,16,6).pop();  // bill
+    b.C('#ffffff', MAT.FIXED);
+    b.push().T(0,CH.headY+0.288,0).sphere(0.026,7,5).pop();                        // button
+    RD.addMesh('npc_cap', b.build('npc_cap'));
   }
-  /* --- carried bag / balloon accessory --- */
+  { /* bucket / sun hat: flatter crown + full drooping brim */
+    const b = mb();
+    b.C('#ffffff', MAT.TINT);
+    b.push().T(0,CH.headY+0.01,0).S(1.06,0.86,1.06).dome(CH.headR, 1.24, 1.34, 18, 7).pop();
+    const seg=20, base=b.vcount, y0=CH.headY+0.055;
+    for(let i=0;i<=seg;i++){
+      const a=i/seg*TAU, ca=Math.cos(a), sa=Math.sin(a);
+      b.vert(ca*0.175, y0, sa*0.175, 0,1,0, i/seg, 0);
+      b.vert(ca*0.415, y0-0.075, sa*0.415, 0,0.93,0, i/seg, 1);
+    }
+    for(let i=0;i<seg;i++){ const a=base+i*2; b.i.push(a,a+2,a+3, a,a+3,a+1); b.i.push(a,a+3,a+2, a,a+1,a+3); }
+    RD.addMesh('npc_bucket', b.build('npc_bucket'));
+  }
+  { /* beanie: taller rounded crown + rolled rim */
+    const b = mb();
+    b.C('#ffffff', MAT.TINT);
+    b.push().T(0,CH.headY+0.035,0).S(1.06,1.14,1.06).dome(CH.headR, 1.30, 1.42, 18, 8).pop();
+    b.push().T(0,CH.headY+0.055,0).S(1.06,1.0,1.06).RX(PI/2).torus(0.272,0.046,18,8).pop();
+    b.push().T(0,CH.headY+0.40,0).sphere(0.048,8,6).pop();                          // pom
+    RD.addMesh('npc_beanie', b.build('npc_beanie'));
+  }
+  /* --- backpack (tinted), hip pivot --- */
   { const b = mb();
     b.C('#ffffff', MAT.TINT);
-    b.push().T(0,0,0).box(0.20,0.24,0.09,{bottom:true}).pop();
+    b.push().T(0,0.29,-0.215).box(0.275,0.33,0.155,{taper:0.94}).pop();
+    b.C('#ffffff', MAT.FIXED);
+    b.push().T(0,0.375,-0.222).box(0.245,0.115,0.148).pop();                        // flap
+    b.C('#c8cfd8', MAT.FIXED);
+    for(const sx of [-1,1]) b.push().T(sx*0.115,0.34,0.118).box(0.045,0.30,0.035).pop();  // straps
     RD.addMesh('npc_bag', b.build('npc_bag'));
+  }
+  /* --- staff hi-vis vest, sized to the chibi torso --- */
+  { const b = mb();
+    b.C('#ffe14a', MAT.FIXED);
+    b.push().T(0,0.29,0).box(0.435,0.44,0.285).pop();
+    b.C('#f7fafc', MAT.FIXED);
+    b.push().T(0,0.36,0.146).box(0.40,0.05,0.012).pop();
+    b.push().T(0,0.22,0.146).box(0.40,0.05,0.012).pop();
+    b.push().T(0,0.30,-0.146).box(0.40,0.05,0.012).pop();
+    RD.addMesh('npc_vest', b.build('npc_vest'));
   }
   /* --- ghost preview cube (transparent) --- */
   { const b = mb();
@@ -4345,10 +4425,14 @@ function spawnNPC(){
   n.bob = 0; n.lean = 0;
   n.scale = R.range(0.94,1.06) * (R.chance(0.09)?0.74:1);   // occasional child
   n.colShirt = hex2rgb(R.pick(arch.colors));
-  const skinT = R.range(0,1);
-  n.colSkin = mixRGB(hex2rgb('#f2cfae'), hex2rgb('#8a5a3c'), skinT*skinT);
-  n.colHair = hex2rgb(R.pick(['#2a2118','#3a2a1e','#1b1b22','#6a4a2a','#8a5a3a','#c88a4a','#4a3a5a']));
-  n.colPants = mixRGB(hex2rgb('#2a3448'), hex2rgb('#7a6a5a'), R.range(0,1));
+  n.colSkin  = hex2rgb(R.pick(PAL_SKIN));
+  n.colHair  = hex2rgb(R.pick(PAL_HAIR));
+  n.colPants = hex2rgb(R.pick(PAL_PANTS));
+  /* headwear is a big part of the silhouette in this art style */
+  n.hat      = R.chance(0.66) ? R.int(1,3) : 0;             // 0 none, 1 cap, 2 bucket, 3 beanie
+  n.colHat   = hex2rgb(R.pick(PAL_HAT));
+  n.hasBag   = R.chance(0.44);
+  n.colBag   = hex2rgb(R.pick(PAL_BAG));
   n.visited.clear();
   n.lastFac = null;
   n.mood = 0;
@@ -4897,8 +4981,8 @@ function dispatchStaff(count, tx, tz, ev){
       id: 's'+(W.nextNpcId++), x: W.hqFac.x + W.rng.range(-2.5,2.5), z: W.hqFac.z + 3.4,
       vx:0, vz:0, dir:PI, speed:2.35, state:'go', t:0,
       tx, tz, ev, path:[], pathI:0, legPhase:0, bob:0,
-      colShirt:[0.15,0.55,0.75], colSkin:mixRGB(hex2rgb('#f2cfae'),hex2rgb('#8a5a3c'),W.rng.range(0,0.7)),
-      colHair:hex2rgb('#2a2118'), colPants:[0.16,0.19,0.24], scale:1.02
+      colShirt:hex2rgb('#cfe8ff'), colSkin:hex2rgb(W.rng.pick(PAL_SKIN)),
+      colHair:hex2rgb(W.rng.pick(PAL_HAIR)), colPants:hex2rgb('#7e8fa3'), scale:1.02
     };
     NAV.path(u.x,u.z,tx,tz,u.path,false);
     if(!u.path.length) u.path.push(tx,tz);
@@ -6130,21 +6214,23 @@ const SCENE = {
   },
   drawCrowd(dt){
     const cam = RD.camPos;
-    const legLOD = 30*30, hairLOD = 78*78;
+    const legLOD = 34*34, headLOD = 190*190, hairLOD = 95*95;
+    const HATS = [null,'npc_cap','npc_bucket','npc_beanie'];
     for(const n of W.npcs){
       const gy = terrainH(n.x,n.z);
       const d2 = dist2(n.x,n.z,cam[0],cam[2]);
       const s = n.scale;
-      const hip = gy + 0.46*s + n.bob*s;
+      const hip = gy + CH.hip*s + n.bob*s;
       const ry = n.dir;
-      /* mood-tinted shirt (subtle) */
-      let sr=n.colShirt[0], sg=n.colShirt[1], sb=n.colShirt[2];
       M4.trsY(TMP, n.x, hip, n.z, ry, s,s,s);
-      RD.m('npc_body', TMP, sr,sg,sb, 0, 0.55, 1, 0, 0);
-      if(d2 < hairLOD*2.4){
-        M4.trsY(TMP, n.x, gy + 1.30*s + n.bob*s, n.z, ry, s,s,s);
-        RD.m('npc_head', TMP, n.colSkin[0],n.colSkin[1],n.colSkin[2], 0, 0.5, 1, 0, 0);
-        if(d2 < hairLOD) RD.m('npc_hair', TMP, n.colHair[0],n.colHair[1],n.colHair[2], 0, 0.5, 1, 0, 0);
+      RD.m('npc_body', TMP, n.colShirt[0],n.colShirt[1],n.colShirt[2], 0, 0.55, 1, 0, 0);
+      if(n.hasBag && d2 < hairLOD) RD.m('npc_bag', TMP, n.colBag[0],n.colBag[1],n.colBag[2], 0, 0.5, 1, 0, 0);
+      if(d2 < headLOD){
+        M4.trsY(TMP2, n.x, gy + CH.neck*s + n.bob*s, n.z, ry, s,s,s);
+        RD.m('npc_head', TMP2, n.colSkin[0],n.colSkin[1],n.colSkin[2], 0, 0.5, 1, 0, 0);
+        if(d2 < hairLOD) RD.m('npc_hair', TMP2, n.colHair[0],n.colHair[1],n.colHair[2], 0, 0.5, 1, 0, 0);
+        /* the hat reads at distance, so it keeps the wider LOD budget */
+        if(n.hat) RD.m(HATS[n.hat], TMP2, n.colHat[0],n.colHat[1],n.colHat[2], 0, 0.5, 1, 0, 0);
       }
       if(d2 < legLOD){
         const sw = Math.sin(n.legPhase)*0.55;
@@ -6152,24 +6238,25 @@ const SCENE = {
         const amp = clamp01(mv/1.5);
         for(const side of [-1,1]){
           const a = sw*side*amp;
-          M4.trs(TMP2, n.x + Math.cos(ry)*0.11*side*s, hip, n.z - Math.sin(ry)*0.11*side*s, a, ry, 0, s,s,s);
+          M4.trs(TMP2, n.x + Math.cos(ry)*0.105*side*s, hip, n.z - Math.sin(ry)*0.105*side*s, a, ry, 0, s,s,s);
           RD.m('npc_leg', TMP2, n.colPants[0],n.colPants[1],n.colPants[2], 0, 0.5, 1, 0, 0);
         }
       }
     }
-    /* staff */
+    /* staff — same body, hi-vis vest and cap */
     for(const u of W.staffUnits){
       const gy = terrainH(u.x,u.z);
-      const hip = gy + 0.46 + u.bob;
+      const hip = gy + CH.hip + u.bob;
       M4.trsY(TMP, u.x, hip, u.z, u.dir, 1,1,1);
       RD.m('npc_body', TMP, u.colShirt[0],u.colShirt[1],u.colShirt[2], 0, 0.5,1,0,0);
       RD.m('npc_vest', TMP, 1,1,1, ATMO.night*0.7, 0.5,1,0,0);
-      M4.trsY(TMP, u.x, gy+1.30, u.z, u.dir, 1,1,1);
-      RD.m('npc_head', TMP, u.colSkin[0],u.colSkin[1],u.colSkin[2], 0, 0.5,1,0,0);
-      RD.m('npc_hair', TMP, u.colHair[0],u.colHair[1],u.colHair[2], 0, 0.5,1,0,0);
+      M4.trsY(TMP2, u.x, gy+CH.neck+u.bob, u.z, u.dir, 1,1,1);
+      RD.m('npc_head', TMP2, u.colSkin[0],u.colSkin[1],u.colSkin[2], 0, 0.5,1,0,0);
+      RD.m('npc_hair', TMP2, u.colHair[0],u.colHair[1],u.colHair[2], 0, 0.5,1,0,0);
+      RD.m('npc_cap', TMP2, 1.0,0.88,0.29, ATMO.night*0.5, 0.5,1,0,0);
       const sw = Math.sin(u.legPhase)*0.5;
       for(const side of [-1,1]){
-        M4.trs(TMP2, u.x + Math.cos(u.dir)*0.11*side, hip, u.z - Math.sin(u.dir)*0.11*side, sw*side, u.dir, 0, 1,1,1);
+        M4.trs(TMP2, u.x + Math.cos(u.dir)*0.105*side, hip, u.z - Math.sin(u.dir)*0.105*side, sw*side, u.dir, 0, 1,1,1);
         RD.m('npc_leg', TMP2, u.colPants[0],u.colPants[1],u.colPants[2], 0, 0.5,1,0,0);
       }
       RD.decal(u.x, u.z, 0.9,0.9, 0, 0.25,0.85,0.95, 0.4, 1, 0.1, 0);
@@ -8079,12 +8166,14 @@ const MINI = {
     const y = 0.25 + Math.sin(this.t*3.1)*0.10;
     M4.trs(TMP, this.x, y, this.z, 0, PI/2, tiltA, 1.15,1.15,1.15);
     RD.mNC('surfboard', TMP, 0.96,0.98,1, 0, 0.8,1,0,0);
-    const hip = y + 0.55;
+    const hip = y + 0.42;
     M4.trs(TMP, this.x, hip, this.z, 0, PI/2, tiltA*0.7, 1,1,1);
-    RD.mNC('npc_body', TMP, 0.18,0.72,0.86, 0, 0.5,1,0,0);
-    M4.trs(TMP, this.x - Math.sin(tiltA)*0.84, hip+0.84, this.z, 0, PI/2, tiltA*0.7, 1,1,1);
-    RD.mNC('npc_head', TMP, 0.92,0.78,0.64, 0, 0.5,1,0,0);
-    RD.mNC('npc_hair', TMP, 0.16,0.13,0.10, 0, 0.5,1,0,0);
+    RD.mNC('npc_body', TMP, 0.81,0.94,1.0, 0, 0.5,1,0,0);
+    const lean = (CH.neck-CH.hip);
+    M4.trs(TMP, this.x - Math.sin(tiltA)*lean, hip+lean, this.z, 0, PI/2, tiltA*0.7, 1,1,1);
+    RD.mNC('npc_head', TMP, 0.98,0.84,0.74, 0, 0.5,1,0,0);
+    RD.mNC('npc_hair', TMP, 0.29,0.23,0.19, 0, 0.5,1,0,0);
+    RD.mNC('npc_cap', TMP, 1.0,0.62,0.70, 0, 0.5,1,0,0);
     /* wake */
     RD.decal(this.x-3, this.z, 3.4, 1.3, 0, 1,1,1, 0.34, 2, 0.1, 0);
     /* obstacles */
