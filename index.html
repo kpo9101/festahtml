@@ -553,6 +553,18 @@ table.ledger .cid{font-family:var(--mono);font-size:.82em;color:var(--ink-3)}
 #bgm .bgm-body{padding:0 10px 10px}
 #bgm.collapsed .bgm-body{display:none}
 #bgm .yt{width:100%;aspect-ratio:16/9;border:0;border-radius:9px;background:#000;display:block}
+#bgm .vol{display:flex;align-items:center;gap:7px;margin-top:8px}
+#bgm .vol button{width:24px;height:24px;border-radius:7px;display:grid;place-items:center;
+  background:rgba(255,255,255,.07);border:1px solid var(--edge);font-size:.8em;flex:0 0 auto}
+#bgm .vol button:hover{background:rgba(255,255,255,.15)}
+#bgm .vol input[type=range]{flex:1;-webkit-appearance:none;appearance:none;height:4px;
+  border-radius:3px;background:rgba(255,255,255,.16);outline:none}
+#bgm .vol input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;
+  border-radius:50%;background:var(--accent);cursor:pointer;border:2px solid #0a1428}
+#bgm .vol input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;
+  background:var(--accent);cursor:pointer;border:2px solid #0a1428}
+#bgm .vol .pc{width:34px;text-align:right;font:700 .68em var(--mono);color:var(--ink-3)}
+#bgm .warn{margin-top:7px;font-size:.66em;color:var(--warn);line-height:1.4}
 #bgm .cr{margin-top:7px;line-height:1.42}
 #bgm .cr b{display:block;font-size:.72em;color:var(--ink)}
 #bgm .cr span{display:block;font-size:.68em;color:var(--ink-3)}
@@ -783,9 +795,24 @@ body.ground-active #leftcol:hover,body.ground-active #rightcol:hover{opacity:1}
   .metrics .metric{min-width:66px}
 }
 @media (max-width:700px){
-  #leftcol{width:210px}
-  #topbar{flex-wrap:wrap;min-height:0}
+  #leftcol{width:190px}
+  #topbar{flex-wrap:wrap;min-height:0;gap:6px;padding:6px 8px}
+  .tb-group{padding:0 7px}
 }
+@media (max-width:520px){
+  #leftcol{width:158px}
+  #buildpanel{padding:8px}
+  .bitem .g{width:26px;height:26px;font-size:.95em}
+  .bitem .tx span{display:none}
+  #dock{gap:5px;padding:6px}
+}
+@media (max-height:620px){
+  #eventpanel{max-height:56%}
+  #topbar{min-height:0}
+  .metric{min-width:70px}
+}
+/* never let the columns squeeze the world out of view entirely */
+#centerspace{min-width:120px}
 </style>
 </head>
 <body>
@@ -2298,6 +2325,10 @@ const RD = {
     const dpr = Math.min(window.devicePixelRatio||1, 2);
     const w = Math.max(2, Math.floor(window.innerWidth * dpr));
     const h = Math.max(2, Math.floor(window.innerHeight * dpr));
+    /* five framebuffer reallocations are not free — skip when nothing moved */
+    if(w === this.W && h === this.H
+       && this._scale === QUALITY.renderScale && this._shadow === QUALITY.shadowRes) return;
+    this._scale = QUALITY.renderScale; this._shadow = QUALITY.shadowRes;
     CV.width = w; CV.height = h;
     this.W = w; this.H = h;
     this.rw = Math.max(2, Math.floor(w * QUALITY.renderScale));
@@ -9034,7 +9065,7 @@ const BGM = {
   author:'RYU Russell 러셀',
   authorUrl:'https://www.youtube.com/@ryurussell',
   get url(){ return 'https://www.youtube.com/watch?v='+this.id; },
-  root:null, body:null, frame:null, mounted:false, collapsed:false, _pump:null,
+  root:null, body:null, holder:null, player:null, mounted:false, ready:false, collapsed:false, _pump:null, _failT:null,
   init(){
     if(this.root) return;
     const r = el('div',{id:'bgm', class:'hidden'});   /* starts expanded: the player must be visible while it plays */
@@ -9046,7 +9077,18 @@ const BGM = {
     r.appendChild(this.body);
     document.body.appendChild(r);
     this.root = r;
+    this.renderVolume();
     this.renderCredit();
+  },
+  renderVolume(){
+    if(this.volEl) return;
+    this.volEl = el('div',{class:'vol'},
+      el('button',{text:'🔊', title:T('음소거','Mute'), onclick:e=>{ e.stopPropagation(); this.toggleMute(); }}),
+      el('input',{type:'range', min:0, max:100, step:1, value:Math.round(SETTINGS.music*100),
+        oninput:e=>this.setMusic(e.target.value/100)}),
+      el('span',{class:'pc'}));
+    this.body.appendChild(this.volEl);
+    this.syncUI();
   },
   renderCredit(){
     if(this.creditEl) return;
@@ -9058,50 +9100,114 @@ const BGM = {
     this.body.appendChild(this.creditEl);
   },
   /* Mounted on the first real user gesture — browsers refuse autoplay with
-     sound before one, and the title screen always takes a click. */
+     sound before one, and the title screen always takes a click.
+     Uses YouTube's official IFrame Player API rather than raw postMessage:
+     the player drops command messages unless the parent completes a listener
+     handshake, so setVolume silently did nothing before. */
+  loadApi(cb){
+    if(window.YT && window.YT.Player) return cb();
+    const prev = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = function(){ if(prev) prev(); cb(); };
+    if(!document.getElementById('ytapi')){
+      const sc = document.createElement('script');
+      sc.id = 'ytapi'; sc.src = 'https://www.youtube.com/iframe_api';
+      sc.onerror = ()=>this.fail();
+      document.head.appendChild(sc);
+    }
+  },
   mount(){
     if(this.mounted || SETTINGS.bgmSource !== 'youtube') return;
     this.mounted = true;
-    const origin = encodeURIComponent(location.origin);
-    this.frame = el('iframe',{ class:'yt', id:'bgmframe',
-      src:'https://www.youtube.com/embed/'+this.id
-          +'?autoplay=1&loop=1&playlist='+this.id
-          +'&enablejsapi=1&rel=0&modestbranding=1&playsinline=1&origin='+origin,
-      title:this.title, allow:'autoplay; encrypted-media',
-      referrerpolicy:'strict-origin-when-cross-origin', allowfullscreen:'' });
-    this.body.insertBefore(this.frame, this.creditEl);
+    this.holder = el('div',{id:'bgmplayer', class:'yt'});
+    this.body.insertBefore(this.holder, this.volEl || this.creditEl);
     this.root.classList.add('playing');
-    /* the player ignores commands until it is ready, so push volume for a
-       while after mount rather than betting on a single call landing */
-    clearInterval(this._pump);
-    let tries = 0;
-    this._pump = setInterval(()=>{ this.applyVolume(); if(++tries > 24) clearInterval(this._pump); }, 500);
+    /* if the API cannot load (offline, blocked) fall back to the built-in score */
+    clearTimeout(this._failT);
+    this._failT = setTimeout(()=>{ if(!this.ready) this.fail(); }, 9000);
+    this.loadApi(()=>{
+      if(!this.mounted) return;
+      try{
+        this.player = new YT.Player('bgmplayer', {
+          videoId:this.id,
+          playerVars:{ autoplay:1, loop:1, playlist:this.id, rel:0,
+                       modestbranding:1, playsinline:1 },
+          events:{
+            onReady: e=>{
+              this.ready = true;
+              clearTimeout(this._failT);
+              this.applyVolume();
+              try{ e.target.playVideo(); }catch(_){}
+              this.syncUI();
+            },
+            onStateChange: e=>{ if(e.data === 0){ try{ e.target.playVideo(); }catch(_){} } },
+            onError: ()=>this.fail()
+          }
+        });
+      }catch(err){ this.fail(); }
+    });
+  },
+  fail(){
+    if(SETTINGS.bgmSource !== 'youtube') return;
+    clearTimeout(this._failT);
+    this.unmount();
+    SETTINGS.bgmSource = 'builtin';
+    SETTINGS.apply();
+    if(this.body && !this.body.querySelector('.warn'))
+      this.body.insertBefore(el('div',{class:'warn',
+        text:T('YouTube를 불러오지 못해 내장 음악으로 전환했습니다.',
+               'Could not reach YouTube — switched to the built-in score.')}), this.creditEl);
+    this.syncUI();
   },
   unmount(){
-    clearInterval(this._pump);
-    if(this.frame){ this.frame.remove(); this.frame = null; }
-    this.mounted = false;
+    clearTimeout(this._pump); clearTimeout(this._failT);
+    try{ if(this.player && this.player.destroy) this.player.destroy(); }catch(e){}
+    this.player = null; this.ready = false; this.mounted = false;
+    const h = document.getElementById('bgmplayer'); if(h) h.remove();
+    this.holder = null;
     this.root && this.root.classList.remove('playing');
   },
-  post(func, args){
-    if(!this.frame || !this.frame.contentWindow) return;
-    try{
-      this.frame.contentWindow.postMessage(
-        JSON.stringify({ event:'command', func, args:args||[] }), 'https://www.youtube.com');
-    }catch(e){}
-  },
+  /* 0..1 -> the active music bus, whichever it is */
   applyVolume(){
-    if(!this.frame) return;
     const v = Math.round(clamp01(SETTINGS.master * SETTINGS.music) * 100);
-    this.post('setVolume', [v]);
-    this.post(v <= 0 ? 'mute' : 'unMute');
+    if(this.player && this.ready){
+      try{
+        this.player.setVolume(v);
+        if(v <= 0) this.player.mute(); else this.player.unMute();
+      }catch(e){}
+    }
+    this.syncUI();
+  },
+  /* read the value back off the player — proof the command landed */
+  readVolume(){
+    try{ return (this.player && this.ready) ? this.player.getVolume() : null; }catch(e){ return null; }
+  },
+  setMusic(v){
+    SETTINGS.music = clamp01(v);
+    SETTINGS.apply();          /* drives AUDIO.setVolumes + BGM.applyVolume */
+  },
+  toggleMute(){
+    if(SETTINGS.music > 0){ this._preMute = SETTINGS.music; this.setMusic(0); }
+    else this.setMusic(this._preMute || 0.55);
+  },
+  syncUI(){
+    if(!this.volEl) return;
+    const pct = Math.round(clamp01(SETTINGS.master*SETTINGS.music)*100);
+    const r = this.volEl.querySelector('input');
+    const l = this.volEl.querySelector('.pc');
+    const b = this.volEl.querySelector('button');
+    if(r && document.activeElement !== r) r.value = Math.round(SETTINGS.music*100);
+    if(l) l.textContent = pct + '%';
+    if(b) b.textContent = SETTINGS.music > 0 ? '🔊' : '🔇';
+    this.root && this.root.classList.toggle('playing', !!this.ready && SETTINGS.music > 0);
   },
   setSource(src){
     SETTINGS.bgmSource = src;
-    if(src === 'youtube'){ this.mount(); this.applyVolume(); }
+    const w = this.body && this.body.querySelector('.warn'); if(w) w.remove();
+    if(src === 'youtube') this.mount();
     else this.unmount();
     SETTINGS.apply();
     this.show(src !== 'off');
+    this.syncUI();
   },
   toggleCollapse(){
     this.collapsed = !this.collapsed;
@@ -9861,7 +9967,27 @@ function boot(){
     BOOT.set(0.90, 'interface');
     UI.init();
     BGM.init();
-    addEventListener('resize', ()=>{ RD.resize(); UI.rebuild(); });
+    /* resize fires continuously while a window is dragged. Reallocating the
+       framebuffers and rebuilding the HUD on each event stutters badly and
+       throws away UI state (selected facility, build category, scroll). The
+       layout itself is CSS-driven and needs no rebuild, so only the renderer
+       is resized, debounced, and the few absolutely-placed overlays are
+       repositioned. */
+    let resizeT = 0;
+    const applyResize = ()=>{
+      RD.resize();
+      UI.refreshLegend();
+      if(BUILD.selected) UI.refreshInspector();
+    };
+    const onResize = ()=>{
+      Tutorial.hide();                       /* anchored to stale rects */
+      UI.tipEl && UI.tipEl.classList.remove('on');
+      clearTimeout(resizeT);
+      resizeT = setTimeout(applyResize, 110);
+    };
+    addEventListener('resize', onResize);
+    addEventListener('orientationchange', onResize);
+    if(window.ResizeObserver) new ResizeObserver(onResize).observe(document.documentElement);
     document.addEventListener('visibilitychange', ()=>{
       if(document.hidden && SETTINGS.autoPause && W.stage==='live' && !W.paused){
         W.paused = true; W.speed = 0; UI.refreshSpeed(); UI.buildDock();

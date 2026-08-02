@@ -60,6 +60,8 @@ Then visit `http://localhost:5173`.
 | `1`–`4` | Stations (Pocha Rush) · `Space` detonate (Fireworks) |
 | `L` `H` `Esc` | Language / help / cancel–settings |
 
+Music volume has a slider on the music widget itself, and in Settings → Audio.
+
 ---
 
 ## Design-document conformance
