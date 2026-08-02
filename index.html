@@ -1556,6 +1556,13 @@ vec3 aces(vec3 x){
   const float a=2.51,b=0.03,c=2.43,d=0.59,e=0.14;
   return clamp((x*(a*x+b))/(x*(c*x+d)+e), 0.0, 1.0);
 }
+/* extended Reinhard applied to luminance only — preserves pastel chroma */
+vec3 tonemapChroma(vec3 c, float W){
+  float l = max(dot(c, vec3(0.2126,0.7152,0.0722)), 1e-5);
+  float lt = l*(1.0 + l/(W*W))/(1.0 + l);
+  vec3 tc = c * (lt/l);
+  return clamp(mix(tc, vec3(lt), smoothstep(1.30, 4.0, l)), 0.0, 1.0);
+}
 `;
 
 const VS_INST = `#version 300 es
@@ -2015,7 +2022,7 @@ void main(){
   vec3 bl = texture(uBloom, uv).rgb;
   c += bl * uBloomAmt;
   c *= uExposure;
-  c = aces(c);
+  c = tonemapChroma(c, 2.75);
   // saturation
   float lum = dot(c, vec3(0.2126,0.7152,0.0722));
   c = mix(vec3(lum), c, uSat);
@@ -2036,18 +2043,18 @@ void main(){
    4. ATMOSPHERE (time of day)
    =========================================================================== */
 const SKYKEY = [
-  { h:0.0,  top:'#050a1c', mid:'#0a1330', bot:'#141f42', sun:'#8ba6d8', si:0.10, at:'#141c38', ab:'#0a1024', fog:'#0d1734', night:1.0, cloud:0.45 },
-  { h:4.6,  top:'#071026', mid:'#12203f', bot:'#25304f', sun:'#9db2dc', si:0.13, at:'#182242', ab:'#0d1428', fog:'#141f3c', night:0.95, cloud:0.5 },
+  { h:0.0,  top:'#050a1c', mid:'#0a1330', bot:'#141f42', sun:'#9db4e0', si:0.22, at:'#3b4a7e', ab:'#242c52', fog:'#0d1734', night:1.0, cloud:0.45 },
+  { h:4.6,  top:'#071026', mid:'#12203f', bot:'#25304f', sun:'#aec0e8', si:0.24, at:'#404f86', ab:'#283158', fog:'#141f3c', night:0.95, cloud:0.5 },
   { h:6.0,  top:'#1d3766', mid:'#7d5a86', bot:'#e08a63', sun:'#ff9a5a', si:0.85, at:'#4a4f78', ab:'#2b2b46', fog:'#8f6c78', night:0.35, cloud:0.6 },
-  { h:7.5,  top:'#2a63ad', mid:'#79aede', bot:'#cfe0ee', sun:'#ffe0b0', si:1.35, at:'#8fb4dc', ab:'#4c5f78', fog:'#a9c8e2', night:0.05, cloud:0.5 },
-  { h:11.0, top:'#1f6fd0', mid:'#6fb4ec', bot:'#c8e5f8', sun:'#fff4dd', si:1.75, at:'#a8ccf0', ab:'#5e7590', fog:'#bcdcf2', night:0.0, cloud:0.42 },
-  { h:14.0, top:'#2178dc', mid:'#78bcf2', bot:'#d2ecfb', sun:'#fff8e8', si:1.85, at:'#b2d4f4', ab:'#647c96', fog:'#c4e2f6', night:0.0, cloud:0.38 },
-  { h:17.0, top:'#2a6fc4', mid:'#8db9e2', bot:'#f0d9bc', sun:'#ffe4b4', si:1.55, at:'#a9c4e0', ab:'#6b7488', fog:'#c9d8e4', night:0.0, cloud:0.5 },
-  { h:18.8, top:'#27508f', mid:'#c9784f', bot:'#ffb06a', sun:'#ff9440', si:1.25, at:'#8a7898', ab:'#4e4560', fog:'#c98a6c', night:0.06, cloud:0.66 },
-  { h:19.7, top:'#1b3468', mid:'#a24a5c', bot:'#ff8551', sun:'#ff6a2a', si:0.85, at:'#66557e', ab:'#332e4c', fog:'#96556a', night:0.22, cloud:0.72 },
-  { h:20.4, top:'#0e1c44', mid:'#3b2a5c', bot:'#8a4362', sun:'#c2547a', si:0.34, at:'#3a3560', ab:'#1c1c38', fog:'#4a3358', night:0.62, cloud:0.6 },
-  { h:21.3, top:'#070f2a', mid:'#131c3f', bot:'#2a2450', sun:'#93a8d6', si:0.14, at:'#1e2648', ab:'#0e1328', fog:'#1b2340', night:0.92, cloud:0.5 },
-  { h:24.0, top:'#050a1c', mid:'#0a1330', bot:'#141f42', sun:'#8ba6d8', si:0.10, at:'#141c38', ab:'#0a1024', fog:'#0d1734', night:1.0, cloud:0.45 },
+  { h:7.5,  top:'#2a63ad', mid:'#79aede', bot:'#cfe0ee', sun:'#ffe0b0', si:1.26, at:'#aecbea', ab:'#93a4bc', fog:'#a9c8e2', night:0.05, cloud:0.5 },
+  { h:11.0, top:'#1f6fd0', mid:'#6fb4ec', bot:'#c8e5f8', sun:'#fff4dd', si:1.52, at:'#c0dcf8', ab:'#a5b7cc', fog:'#bcdcf2', night:0.0, cloud:0.42 },
+  { h:14.0, top:'#2178dc', mid:'#78bcf2', bot:'#d2ecfb', sun:'#fff8e8', si:1.60, at:'#c6e0fa', ab:'#aabcd0', fog:'#c4e2f6', night:0.0, cloud:0.38 },
+  { h:17.0, top:'#2a6fc4', mid:'#8db9e2', bot:'#f0d9bc', sun:'#ffe4b4', si:1.40, at:'#c4d8ee', ab:'#adb8c8', fog:'#c9d8e4', night:0.0, cloud:0.5 },
+  { h:18.8, top:'#27508f', mid:'#c9784f', bot:'#ffb06a', sun:'#ff9d52', si:1.32, at:'#a892b8', ab:'#6f6486', fog:'#c98a6c', night:0.06, cloud:0.66 },
+  { h:19.7, top:'#1b3468', mid:'#a24a5c', bot:'#ff8551', sun:'#ff7d45', si:0.95, at:'#8a76a6', ab:'#544c70', fog:'#96556a', night:0.22, cloud:0.72 },
+  { h:20.4, top:'#0e1c44', mid:'#3b2a5c', bot:'#8a4362', sun:'#d0688c', si:0.46, at:'#6b64a4', ab:'#3f3e6e', fog:'#4a3358', night:0.62, cloud:0.6 },
+  { h:21.3, top:'#070f2a', mid:'#131c3f', bot:'#2a2450', sun:'#a8bce6', si:0.26, at:'#46528a', ab:'#2a3358', fog:'#1b2340', night:0.92, cloud:0.5 },
+  { h:24.0, top:'#050a1c', mid:'#0a1330', bot:'#141f42', sun:'#9db4e0', si:0.22, at:'#2e3a66', ab:'#1a2140', fog:'#0d1734', night:1.0, cloud:0.45 },
 ];
 const ATMO = {
   skyTop:[0,0,0], skyMid:[0,0,0], skyBot:[0,0,0], sun:[1,1,1], sunI:1,
@@ -2447,7 +2454,7 @@ const RD = {
       this.bright.bind(false);
       let P = this.progs.bright.use();
       bindTex(0, src); gl.uniform1i(P.u.uTex,0);
-      gl.uniform1f(P.u.uThresh, lerp(1.02, 0.62, ATMO.night));
+      gl.uniform1f(P.u.uThresh, lerp(2.60, 0.85, ATMO.night));
       gl.uniform1f(P.u.uSoft, 0.6);
       drawQuad();
       P = this.progs.blur.use();
@@ -2470,12 +2477,13 @@ const RD = {
     const P = this.progs.comp.use();
     bindTex(0, src); gl.uniform1i(P.u.uScene,0);
     bindTex(1, bloomTex || src); gl.uniform1i(P.u.uBloom,1);
-    gl.uniform1f(P.u.uExposure, opt.exposure===undefined ? lerp(1.02, 1.42, ATMO.night) : opt.exposure);
-    gl.uniform1f(P.u.uBloomAmt, QUALITY.bloom ? lerp(0.30, 0.72, ATMO.night)*(opt.bloomMul||1) : 0);
+    const autoExp = clamp(1.95/(0.66 + ATMO.sunI*0.60), 1.05, 3.4);
+    gl.uniform1f(P.u.uExposure, opt.exposure===undefined ? autoExp : opt.exposure);
+    gl.uniform1f(P.u.uBloomAmt, QUALITY.bloom ? lerp(0.16, 0.74, ATMO.night)*(opt.bloomMul||1) : 0);
     gl.uniform1f(P.u.uVignette, SETTINGS.vignette ? 0.42 : 0.12);
     gl.uniform1f(P.u.uGrain, SETTINGS.grain ? 0.030 : 0);
     gl.uniform1f(P.u.uTime, this.time);
-    gl.uniform1f(P.u.uSat, opt.sat===undefined?1.06:opt.sat);
+    gl.uniform1f(P.u.uSat, opt.sat===undefined?1.16:opt.sat);
     gl.uniform1f(P.u.uAberr, SETTINGS.reduceMotion ? 0 : this.aberr);
     gl.uniform1f(P.u.uFlash, this.flash);
     gl.uniform1f(P.u.uDesat, this.desat);
@@ -2488,8 +2496,8 @@ const RD = {
     gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,HEAT_W,HEAT_H,gl.RGBA,gl.UNSIGNED_BYTE,this.heatData);
   }
 };
-const WATER_DEEP = new Float32Array([0.035,0.13,0.26]);
-const WATER_SHALLOW = new Float32Array([0.10,0.44,0.52]);
+const WATER_DEEP = new Float32Array([0.17,0.40,0.55]);
+const WATER_SHALLOW = new Float32Array([0.48,0.80,0.84]);
 const HEAT_W = 96, HEAT_H = 72;
 /* ===========================================================================
    6. SETTINGS
@@ -2571,80 +2579,80 @@ function defFac(o){ FAC[o.id] = o; return o; }
 /* --- fixed (pre-placed, not purchasable) --- */
 defFac({ id:'mainstage', ko:'메인 무대', en:'Main Stage', cat:'fixed', g:'🎤',
   cost:0, w:6, h:4, cap:400, service:0, queueMax:0, rev:0, sat:8, attraction:34,
-  needs:['fun'], upkeep:0, fixed:true, mesh:'mainstage', color:'#3a4f7a',
+  needs:['fun'], upkeep:0, fixed:true, mesh:'mainstage', color:'#83a4dc',
   desc:{ko:'축제의 심장. 19:40 메인 공연이 고정 편성된다.', en:'Heart of the festival. The 19:40 main show is fixed here.'},
   progSlots:0, noQueue:true });
 defFac({ id:'gate', ko:'메인 게이트', en:'Main Gate', cat:'fixed', g:'🎪',
   cost:0, w:4, h:1, cap:999, service:0, queueMax:0, rev:0, sat:0, attraction:0,
-  needs:[], upkeep:0, fixed:true, mesh:'gate', color:'#7a6a4f',
+  needs:[], upkeep:0, fixed:true, mesh:'gate', color:'#ebcc9b',
   desc:{ko:'방문객이 입장하는 곳.', en:'Where visitors enter.'}, noQueue:true });
 defFac({ id:'hq', ko:'운영본부', en:'Operations HQ', cat:'fixed', g:'🏢',
   cost:0, w:3, h:2, cap:99, service:0, queueMax:0, rev:0, sat:0, attraction:0,
-  needs:[], upkeep:0, fixed:true, mesh:'hq', color:'#4a5a6a',
+  needs:[], upkeep:0, fixed:true, mesh:'hq', color:'#aac3d6',
   desc:{ko:'스태프가 출동하는 거점.', en:'Staff dispatch base.'}, noQueue:true });
 
 /* --- food & drink --- */
 defFac({ id:'pocha', ko:'해산물 포차', en:'Seafood Pocha', cat:'food', g:'🦐',
   cost:750, w:2, h:2, cap:2, service:3.4, queueMax:12, rev:26, sat:9, attraction:16,
-  needs:['hunger'], upkeep:60, mesh:'booth_food', color:'#e8563f',
+  needs:['hunger'], upkeep:60, mesh:'booth_food', color:'#f6a595',
   desc:{ko:'부산 대표 먹거리. 매출이 크지만 줄이 길어진다.', en:'Busan signature eats. High revenue, long queues.'} });
 defFac({ id:'bingsu', ko:'빙수 카페', en:'Bingsu Cafe', cat:'food', g:'🍧',
   cost:520, w:2, h:1, cap:2, service:2.6, queueMax:10, rev:17, sat:8, attraction:13,
-  needs:['cool','thirst'], upkeep:45, mesh:'booth_ice', color:'#5fd0e8',
+  needs:['cool','thirst'], upkeep:45, mesh:'booth_ice', color:'#97e5f7',
   desc:{ko:'폭염에 강한 시설. 더위 스트레스를 크게 낮춘다.', en:'Strong in heat waves — greatly reduces heat stress.'} });
 defFac({ id:'friedtruck', ko:'튀김 트럭', en:'Fried Snack Truck', cat:'food', g:'🍤',
   cost:470, w:2, h:1, cap:2, service:2.2, queueMax:10, rev:15, sat:6, attraction:11,
-  needs:['hunger'], upkeep:40, mesh:'truck', color:'#f0a93e',
+  needs:['hunger'], upkeep:40, mesh:'truck', color:'#f7ce97',
   desc:{ko:'회전이 빠른 간식 시설. 병목 완화에 좋다.', en:'Fast turnover snack stall — good for easing bottlenecks.'} });
 defFac({ id:'coffee', ko:'커피 스탠드', en:'Coffee Stand', cat:'food', g:'☕',
   cost:380, w:1, h:1, cap:1, service:1.9, queueMax:8, rev:11, sat:5, attraction:8,
-  needs:['thirst'], upkeep:30, mesh:'booth_small', color:'#8b5e3c',
+  needs:['thirst'], upkeep:30, mesh:'booth_small', color:'#e6bc96',
   desc:{ko:'작고 저렴하다. 자투리 공간 채우기에 좋다.', en:'Small and cheap. Great for filling gaps.'} });
 defFac({ id:'beer', ko:'수제맥주 바', en:'Craft Beer Bar', cat:'food', g:'🍺',
   cost:880, w:3, h:2, cap:3, service:3.0, queueMax:14, rev:31, sat:10, attraction:20,
-  needs:['thirst','fun'], upkeep:75, mesh:'booth_bar', color:'#e0a63a',
+  needs:['thirst','fun'], upkeep:75, mesh:'booth_bar', color:'#f7d497',
   desc:{ko:'야간 매출이 급등한다. 소음 민원 위험 +.', en:'Revenue spikes at night. Higher noise-complaint risk.'},
   nightBoost:1.9, noise:1.6 });
 
 /* --- retail --- */
 defFac({ id:'goods', ko:'굿즈 스토어', en:'Goods Store', cat:'retail', g:'🎁',
   cost:640, w:2, h:2, cap:3, service:3.0, queueMax:10, rev:22, sat:7, attraction:14,
-  needs:['shop'], upkeep:50, mesh:'booth_shop', color:'#b06ce0',
+  needs:['shop'], upkeep:50, mesh:'booth_shop', color:'#d197f7',
   desc:{ko:'축제 굿즈. Buzz가 높을수록 매출이 오른다.', en:'Festival merch. Sells better when Buzz is high.'},
   buzzScale:1.6 });
 defFac({ id:'photo', ko:'포토 스팟', en:'Photo Spot', cat:'retail', g:'📸',
   cost:420, w:2, h:2, cap:4, service:2.0, queueMax:8, rev:8, sat:11, attraction:18,
-  needs:['photo','fun'], upkeep:25, mesh:'photospot', color:'#ff7ea8',
+  needs:['photo','fun'], upkeep:25, mesh:'photospot', color:'#f797b6',
   desc:{ko:'SNS 게시 확률이 크게 오른다. Buzz 엔진.', en:'Big boost to SNS post rate. A Buzz engine.'},
   buzzGen:2.4 });
 
 /* --- infrastructure --- */
 defFac({ id:'restroom', ko:'화장실', en:'Restroom', cat:'infra', g:'🚻',
   cost:950, w:2, h:2, cap:4, service:2.4, queueMax:14, rev:0, sat:4, attraction:2,
-  needs:['restroom'], upkeep:70, mesh:'restroom', color:'#6f8fb0',
+  needs:['restroom'], upkeep:70, mesh:'restroom', color:'#9ccbf1',
   desc:{ko:'없으면 만족도가 계속 깎인다. 최소 2개 권장.', en:'Without these, satisfaction bleeds. 2+ recommended.'},
   essential:true, dirties:1.6 });
 defFac({ id:'water', ko:'급수대', en:'Water Station', cat:'infra', g:'⛲',
   cost:460, w:1, h:1, cap:3, service:1.2, queueMax:8, rev:0, sat:5, attraction:4,
-  needs:['thirst','cool'], upkeep:22, mesh:'waterpost', color:'#4fc0d8',
+  needs:['thirst','cool'], upkeep:22, mesh:'waterpost', color:'#97e7f7',
   desc:{ko:'폭염 이벤트 피해를 크게 줄인다.', en:'Greatly reduces heat-wave damage.'},
   essential:true });
 defFac({ id:'shade', ko:'그늘막 쉼터', en:'Shade Canopy', cat:'infra', g:'⛱️',
   cost:340, w:2, h:2, cap:8, service:4.5, queueMax:6, rev:0, sat:6, attraction:5,
-  needs:['rest','cool'], upkeep:15, mesh:'canopy', color:'#4fbf8f',
+  needs:['rest','cool'], upkeep:15, mesh:'canopy', color:'#99efc4',
   desc:{ko:'휴식과 더위 회복. 체류 시간을 늘린다.', en:'Rest + heat recovery. Increases dwell time.'} });
 defFac({ id:'bench', ko:'벤치 쉼터', en:'Rest Area', cat:'infra', g:'🪑',
   cost:280, w:2, h:1, cap:6, service:5.0, queueMax:4, rev:0, sat:5, attraction:3,
-  needs:['rest'], upkeep:10, mesh:'bench', color:'#9a7d5a',
+  needs:['rest'], upkeep:10, mesh:'bench', color:'#e9ca9f',
   desc:{ko:'체력 회복. 노약자·가족 만족도에 중요.', en:'Restores energy. Matters for families and elders.'} });
 defFac({ id:'trash', ko:'분리수거함', en:'Recycling Bin', cat:'infra', g:'🗑️',
   cost:150, w:1, h:1, cap:0, service:0, queueMax:0, rev:0, sat:1, attraction:0,
-  needs:[], upkeep:5, mesh:'trash', color:'#5f9f6f', noQueue:true,
+  needs:[], upkeep:5, mesh:'trash', color:'#9ce0a8', noQueue:true,
   desc:{ko:'주변 청결도 하락을 억제하고 쓰레기 이벤트를 줄인다.', en:'Slows local litter buildup and reduces litter events.'},
   cleanRadius:13 });
 defFac({ id:'sign', ko:'안내 표지판', en:'Wayfinding Sign', cat:'infra', g:'🪧',
   cost:190, w:1, h:1, cap:0, service:0, queueMax:0, rev:0, sat:1, attraction:0,
-  needs:[], upkeep:4, mesh:'sign', color:'#d8c070', noQueue:true,
+  needs:[], upkeep:4, mesh:'sign', color:'#f7e297', noQueue:true,
   desc:{ko:'주변 NPC의 목적지 선택이 정확해지고 배회가 줄어든다.', en:'Nearby NPCs choose destinations better and wander less.'},
   signRadius:18 });
 defFac({ id:'lamp', ko:'경관 조명', en:'Festival Lighting', cat:'infra', g:'💡',
@@ -2654,45 +2662,45 @@ defFac({ id:'lamp', ko:'경관 조명', en:'Festival Lighting', cat:'infra', g:'
   lightRadius:17 });
 defFac({ id:'fence', ko:'통행 제어 펜스', en:'Crowd Fence', cat:'control', g:'🚧',
   cost:110, w:1, h:1, cap:0, service:0, queueMax:0, rev:0, sat:0, attraction:0,
-  needs:[], upkeep:0, mesh:'fence', color:'#e8a33a', noQueue:true, blocks:true,
+  needs:[], upkeep:0, mesh:'fence', color:'#f7cc97', noQueue:true, blocks:true,
   desc:{ko:'통로를 막아 동선을 설계한다. 비상 동선은 막을 수 없다.', en:'Blocks paths to shape flow. Cannot block emergency lanes.'} });
 
 /* --- safety --- */
 defFac({ id:'firstaid', ko:'의무실', en:'First Aid Post', cat:'safety', g:'⛑️',
   cost:1250, w:2, h:2, cap:2, service:3.0, queueMax:6, rev:0, sat:3, attraction:1,
-  needs:[], upkeep:90, mesh:'firstaid', color:'#e85f6f', noQueue:false,
+  needs:[], upkeep:90, mesh:'firstaid', color:'#f797a4', noQueue:false,
   desc:{ko:'응급 이벤트 처리 시간 -45%. 안전도 상시 +.', en:'Medical events resolve 45% faster. Permanent safety bonus.'},
   safety:8, eventBoost:{medical:0.55} });
 defFac({ id:'info', ko:'종합 안내소', en:'Information Center', cat:'safety', g:'ℹ️',
   cost:720, w:2, h:1, cap:2, service:2.0, queueMax:8, rev:0, sat:4, attraction:3,
-  needs:['fun'], upkeep:55, mesh:'info', color:'#5f9fe8',
+  needs:['fun'], upkeep:55, mesh:'info', color:'#97c4f7',
   desc:{ko:'미아·분실 이벤트 -50% 시간. 안내 반경 내 배회 감소.', en:'Lost-child/item events −50% time. Less wandering nearby.'},
   safety:5, signRadius:22, eventBoost:{lostchild:0.5, lostitem:0.5} });
 defFac({ id:'lifeguard', ko:'안전 요원 초소', en:'Lifeguard Post', cat:'safety', g:'🛟',
   cost:680, w:1, h:1, cap:0, service:0, queueMax:0, rev:0, sat:2, attraction:1,
-  needs:[], upkeep:50, mesh:'lifeguard', color:'#ff8f4f', noQueue:true,
+  needs:[], upkeep:50, mesh:'lifeguard', color:'#f7bb97', noQueue:true,
   desc:{ko:'해변 구역 안전도 대폭 상승. 만조 이벤트에 필수.', en:'Big beach-zone safety boost. Essential for tide events.'},
   safety:10, beachOnly:true, eventBoost:{tide:0.5} });
 
 /* --- program-slot facilities --- */
 defFac({ id:'craftbooth', ko:'체험 부스', en:'Craft Booth', cat:'program', g:'🎨',
   cost:820, w:2, h:2, cap:12, service:6.0, queueMax:10, rev:0, sat:6, attraction:9,
-  needs:['fun'], upkeep:60, mesh:'booth_craft', color:'#7fc9a8', progSlots:2,
+  needs:['fun'], upkeep:60, mesh:'booth_craft', color:'#9ef0c7', progSlots:2,
   tags:['craft'],
   desc:{ko:'유료 프로그램 슬롯 2개. 체험형 콘텐츠를 넣는다.', en:'2 paid program slots. Hosts hands-on content.'} });
 defFac({ id:'smallstage', ko:'소형 무대', en:'Small Stage', cat:'program', g:'🎸',
   cost:1450, w:4, h:3, cap:60, service:0, queueMax:0, rev:0, sat:7, attraction:15,
-  needs:['fun'], upkeep:110, mesh:'smallstage', color:'#8f6fe0', progSlots:2, noQueue:true,
+  needs:['fun'], upkeep:110, mesh:'smallstage', color:'#b597f7', progSlots:2, noQueue:true,
   tags:['stage'], noise:2.0,
   desc:{ko:'버스킹·공연용. 메인 공연과 군중을 분산시킨다.', en:'For busking and shows. Splits the crowd from the main stage.'} });
 defFac({ id:'wellness', ko:'웰니스 존', en:'Wellness Zone', cat:'program', g:'🧘',
   cost:980, w:3, h:3, cap:16, service:8.0, queueMax:8, rev:0, sat:8, attraction:8,
-  needs:['rest','fun'], upkeep:70, mesh:'wellness', color:'#a8d86f', progSlots:1,
+  needs:['rest','fun'], upkeep:70, mesh:'wellness', color:'#d0f797', progSlots:1,
   tags:['wellness'],
   desc:{ko:'해변 혼잡을 분산한다. 선셋 요가 편성 가능.', en:'Disperses beach congestion. Hosts sunset yoga.'} });
 defFac({ id:'surfschool', ko:'서핑 스쿨', en:'Surf School', cat:'program', g:'🏄',
   cost:1180, w:3, h:2, cap:8, service:5.0, queueMax:8, rev:18, sat:12, attraction:17,
-  needs:['fun'], upkeep:80, mesh:'surfschool', color:'#3fb0e0', progSlots:1,
+  needs:['fun'], upkeep:80, mesh:'surfschool', color:'#97daf7', progSlots:1,
   tags:['surf'], beachOnly:true, minigame:'surf',
   desc:{ko:'해변 전용. 직접 서핑 미니게임을 플레이할 수 있다.', en:'Beach only. Lets you personally play the surfing minigame.'} });
 
@@ -2988,16 +2996,14 @@ const SNS_NEU = {
    15. MESH LIBRARY
    =========================================================================== */
 const PAL = {
-  sand:'#e6d3a4', sandWet:'#c9b184', plaza:'#cdc7bb', plazaLine:'#e8e3d8',
-  grass:'#6fa855', dune:'#dcc severe', deck:'#b3norm',
-  wood:'#a87844', woodDk:'#6b4a28', woodLt:'#d6a86a',
-  metal:'#a7b0bb', metalDk:'#5a636e', dark:'#2c3340',
-  white:'#f4f7fa', off:'#e6ebf0', black:'#1b2028',
-  rock:'#7d7b78', rockDk:'#5a5855',
-  leaf:'#4f9d5c', leafDk:'#37784a', palm:'#5fae63', trunk:'#8a6a45',
+  sand:'#f4ecdc', sandWet:'#e2dcd2', plaza:'#f8fafc', plazaLine:'#ffffff',
+  grass:'#a9d69c', dune:'#efe7d6', deck:'#e3d0b6',
+  wood:'#e2cba9', woodDk:'#c4a684', woodLt:'#f4e6d2',
+  metal:'#e0e7ef', metalDk:'#aab6c4', dark:'#75808f',
+  white:'#fbfdff', off:'#eef3f8', black:'#4a5361',
+  rock:'#d3d1cd', rockDk:'#b8b6b2',
+  leaf:'#8fd08b', leafDk:'#72b97a', palm:'#98d695', trunk:'#d2b596',
 };
-/* fix accidental typos above with real values */
-PAL.dune = '#dcc79a'; PAL.deck = '#b3844f';
 
 function terrainH(x,z){
   let h = 0;
@@ -3017,14 +3023,14 @@ function terrainColor(x,z,h){
   const wet   = smoothstep(26, 31.5, z);
   const inPlaza = (x>GRID.x0-1 && x<GRID.x1+1 && z>GRID.z0-1 && z<MAP.beachZ-1) ? 1 : 0;
   let c = hex2rgb(PAL.sand);
-  if(inPlaza) c = mixRGB(hex2rgb(PAL.plaza), hex2rgb(PAL.sand), 0.28);
+  if(inPlaza) c = mixRGB(hex2rgb(PAL.plaza), hex2rgb(PAL.sand), 0.12);
   c = mixRGB(c, hex2rgb(PAL.sand), beach*0.9);
   c = mixRGB(c, hex2rgb(PAL.sandWet), wet);
   // dune grass on high ground
   const g = smoothstep(1.1, 2.6, h) * (1-beach);
-  c = mixRGB(c, hex2rgb(PAL.grass), g*0.55);
+  c = mixRGB(c, hex2rgb(PAL.grass), g*0.45);
   // subtle noise mottle
-  const n = (fbm2(x*0.35, z*0.35)-0.5)*0.10;
+  const n = (fbm2(x*0.35, z*0.35)-0.5)*0.045;
   return [clamp01(c[0]+n), clamp01(c[1]+n), clamp01(c[2]+n)];
 }
 
@@ -3249,6 +3255,45 @@ function buildEnvMeshes(){
     b.C('#ffffff', MAT.EMIT).push().T(0,-0.19,0).RX(PI).cyl(0.17,0.17,0.02,8).pop();
     RD.addMesh('stagelight', b.build('stagelight'));
   }
+  /* --- balloon cluster --- */
+  { const b = mb();
+    const cols=['#ffd0dc','#cfe8ff','#fff2c9','#d9f2e6','#e0d4f5','#ffc2cf'];
+    const pos=[[0,2.55,0],[-0.42,2.30,0.20],[0.44,2.34,-0.16],[-0.22,2.86,-0.30],[0.26,2.92,0.26],[0.02,2.06,-0.42]];
+    b.C('#e6edf4', MAT.FIXED);
+    for(const q of pos){
+      b.push().T(q[0]*0.5,q[1]*0.5,q[2]*0.5)
+       .RZ(Math.atan2(q[0],q[1])).RX(-Math.atan2(q[2],q[1]))
+       .cyl(0.011,0.011,q[1],4,{center:true}).pop();
+    }
+    for(let i=0;i<pos.length;i++){
+      const q=pos[i];
+      b.C(cols[i], MAT.FIXED);
+      b.push().T(q[0],q[1],q[2]).S(1,1.16,1).sphere(0.24,10,7).pop();
+      b.push().T(q[0],q[1]-0.26,q[2]).cyl(0.05,0.015,0.07,6).pop();
+    }
+    RD.addMesh('balloons', b.build('balloons'));
+  }
+  /* --- triangular bunting: spans 7m along X, sags in the middle --- */
+  { const b = mb();
+    const cols=['#f797b6','#97e5f7','#fff0b8','#b8e8cc','#d8c4f2','#ffd0b0'];
+    const span=7, sag=0.85, N=10;
+    const yAt = t => -sag*Math.sin(t*PI);
+    b.C('#eef4fa', MAT.FIXED);
+    for(let i=0;i<N;i++){
+      const t0=i/N, t1=(i+1)/N;
+      const x0=(t0-0.5)*span, x1=(t1-0.5)*span, y0=yAt(t0), y1=yAt(t1);
+      b.push().T((x0+x1)/2,(y0+y1)/2,0).RZ(Math.atan2(y1-y0,x1-x0)-PI/2)
+       .cyl(0.014,0.014,Math.hypot(x1-x0,y1-y0),4,{center:true}).pop();
+    }
+    for(let i=0;i<N;i++){
+      const t=(i+0.5)/N, x=(t-0.5)*span, y=yAt(t);
+      b.C(cols[i%cols.length], MAT.LEAF);
+      const w=0.17, hgt=0.30;
+      const a1=b.vert(x-w,y,0, 0,0,1, 0,1), a2=b.vert(x+w,y,0, 0,0,1, 1,1), a3=b.vert(x,y-hgt,0, 0,0,1, .5,0);
+      b.tri(a1,a2,a3); b.tri(a3,a2,a1);
+    }
+    RD.addMesh('bunting', b.build('bunting'));
+  }
   /* --- bollard/light pole for promenade --- */
   { const b = mb();
     b.C(PAL.metalDk, MAT.FIXED).cyl(0.09,0.07,3.4,7);
@@ -3291,10 +3336,10 @@ function buildFacilityMeshes(){
   /* ---- food booth (2x2) ---- */
   { const b = mb();
     posts(b,5.2,4.4,2.9,PAL.woodDk);
-    counter(b,4.6,1.0,1.05,'#e8563f',PAL.woodLt);
+    counter(b,4.6,1.0,1.05,'#f6a595',PAL.woodLt);
     b.C(PAL.woodDk, MAT.FIXED).push().T(0,1.15,-1.5).box(4.8,2.0,0.16).pop();
     b.C('#3a2c22', MAT.FIXED).push().T(0,1.5,-1.4).box(3.0,1.1,0.06).pop();
-    awning(b,5.4,2.2,2.95,'#e8563f','#f8f2e4');
+    awning(b,5.4,2.2,2.95,'#f7a797','#ffffff');
     signboard(b,3.0,2.55,'#ffd166',1.05);
     b.C(PAL.metal, MAT.GLOSS).push().T(-1.4,1.14,-0.9).cyl(0.35,0.35,0.3,10).pop();
     b.C('#ffb347', MAT.EMIT).push().T(-1.4,1.30,-0.9).cyl(0.32,0.32,0.03,10).pop();
@@ -3304,17 +3349,17 @@ function buildFacilityMeshes(){
   /* ---- ice / bingsu (2x1) ---- */
   { const b = mb();
     posts(b,5.2,2.2,2.7,PAL.metalDk);
-    counter(b,4.6,0.9,1.05,'#5fd0e8',PAL.white);
+    counter(b,4.6,0.9,1.05,'#97e5f7',PAL.white);
     b.C('#e8f6fb', MAT.FIXED).push().T(0,1.1,-0.7).box(4.6,1.7,0.14).pop();
-    awning(b,5.4,1.9,2.75,'#5fd0e8','#ffffff');
+    awning(b,5.4,1.9,2.75,'#97e5f7','#ffffff');
     signboard(b,2.6,2.4,'#ffffff',0.9);
     b.C('#ffffff', MAT.FIXED).push().T(1.5,1.28,0).sphere(0.3,9,6).pop();
-    b.C('#ff7ea8', MAT.FIXED).push().T(1.5,1.5,0).sphere(0.16,7,5).pop();
+    b.C('#f797b6', MAT.FIXED).push().T(1.5,1.5,0).sphere(0.16,7,5).pop();
     RD.addMesh('booth_ice', b.build('booth_ice'));
   }
   /* ---- small kiosk (1x1) ---- */
   { const b = mb();
-    b.C('#8b5e3c', MAT.TINT).push().T(0,0,0).box(2.1,2.1,2.1,{bottom:true,taper:0.96}).pop();
+    b.C('#e6bc96', MAT.TINT).push().T(0,0,0).box(2.1,2.1,2.1,{bottom:true,taper:0.96}).pop();
     b.C(PAL.woodDk, MAT.FIXED).push().T(0,2.1,0).pyramid(2.5,2.5,0.55,0.1).pop();
     b.C('#2c2018', MAT.FIXED).push().T(0,1.3,1.06).box(1.4,0.9,0.05).pop();
     b.C(PAL.woodLt, MAT.FIXED).push().T(0,0.86,1.16).box(1.6,0.09,0.35).pop();
@@ -3324,13 +3369,13 @@ function buildFacilityMeshes(){
   /* ---- bar (3x2) ---- */
   { const b = mb();
     posts(b,8.2,4.4,3.0,PAL.woodDk);
-    counter(b,7.6,1.2,1.15,'#e0a63a',PAL.woodDk);
+    counter(b,7.6,1.2,1.15,'#f7d497',PAL.woodDk);
     b.C(PAL.woodDk, MAT.FIXED).push().T(0,1.2,-1.6).box(7.6,1.9,0.18).pop();
     b.C('#1d2733', MAT.FIXED).push().T(0,1.7,-1.48).box(6.2,1.0,0.08).pop();
     for(let i=0;i<5;i++){ b.C('#ffd166', MAT.EMIT).push().T(-2.4+i*1.2,1.75,-1.42).cyl(0.14,0.14,0.03,8).pop(); }
     b.C(PAL.metal, MAT.GLOSS);
     for(let i=0;i<4;i++) b.push().T(-1.5+i*1.0,1.22,-0.4).cyl(0.05,0.05,0.55,6).pop();
-    awning(b,8.4,2.4,3.05,'#e0a63a','#2c3340');
+    awning(b,8.4,2.4,3.05,'#f7d497','#ffffff');
     for(let i=0;i<3;i++){ b.C(PAL.woodLt,MAT.FIXED).push().T(-2.2+i*2.2,0,1.4).cyl(0.16,0.14,0.75,7).pop();
       b.push().T(-2.2+i*2.2,0.75,1.4).cyl(0.34,0.34,0.09,9).pop(); }
     signboard(b,3.6,2.7,'#f8f2e4',1.2);
@@ -3338,24 +3383,24 @@ function buildFacilityMeshes(){
   }
   /* ---- goods shop (2x2) ---- */
   { const b = mb();
-    b.C('#b06ce0', MAT.TINT).push().T(0,0,-0.7).box(5.0,2.8,3.2,{bottom:true}).pop();
+    b.C('#d197f7', MAT.TINT).push().T(0,0,-0.7).box(5.0,2.8,3.2,{bottom:true}).pop();
     b.C('#7a45a0', MAT.FIXED).push().T(0,2.8,-0.7).pyramid(5.4,3.6,0.7,0.3).pop();
     b.C('#2c2436', MAT.FIXED).push().T(0,1.5,0.92).box(3.6,1.6,0.06).pop();
     b.C('#f8f2e4', MAT.FIXED).push().T(0,0.72,1.0).box(4.0,0.10,0.6).pop();
     for(let i=0;i<4;i++){ b.C(i%2?'#ffd166':'#4fe8c0', MAT.FIXED).push().T(-1.4+i*0.95,0.9,1.0).box(0.35,0.28,0.3).pop(); }
-    awning(b,5.2,1.6,2.55,'#b06ce0','#f8f2e4');
+    awning(b,5.2,1.6,2.55,'#d197f7','#ffffff');
     signboard(b,3.2,3.15,'#ffd166',-0.5);
     RD.addMesh('booth_shop', b.build('booth_shop'));
   }
   /* ---- craft booth (2x2) — open tent ---- */
   { const b = mb();
-    b.C('#7fc9a8', MAT.TINT).canopy(5.4,5.0,2.6,0.75,0.16);
+    b.C('#9ef0c7', MAT.TINT).canopy(5.4,5.0,2.6,0.75,0.16);
     b.C(PAL.woodLt, MAT.FIXED);
     for(const sz of [-1,1]) b.push().T(0,0,sz*1.1).box(4.2,0.85,0.9,{bottom:true}).pop();
     b.C('#e8dcc0', MAT.FIXED);
     for(const sz of [-1,1]) b.push().T(0,0.85,sz*1.1).box(4.4,0.08,1.1).pop();
     for(let i=0;i<6;i++){
-      b.C(['#ff7a5c','#ffd166','#6cb6ff','#4fe8c0','#b06ce0','#ff9ec0'][i%6], MAT.FIXED);
+      b.C(['#ff7a5c','#ffd166','#6cb6ff','#4fe8c0','#d197f7','#ff9ec0'][i%6], MAT.FIXED);
       b.push().T(-1.6+i*0.64, 0.94, (i%2?1:-1)*1.1).cyl(0.14,0.11,0.2,7).pop();
     }
     b.C('#ffffff', MAT.EMIT).push().T(0,2.35,2.45).box(2.6,0.3,0.04).pop();
@@ -3363,7 +3408,7 @@ function buildFacilityMeshes(){
   }
   /* ---- food truck (2x1) ---- */
   { const b = mb();
-    b.C('#f0a93e', MAT.TINT).push().T(0,0.55,0).box(5.0,1.9,2.2,{bottom:true}).pop();
+    b.C('#f7ce97', MAT.TINT).push().T(0,0.55,0).box(5.0,1.9,2.2,{bottom:true}).pop();
     b.C('#d88f28', MAT.FIXED).push().T(0,2.45,0).box(5.1,0.28,2.3).pop();
     b.C('#2c3340', MAT.FIXED).push().T(-2.05,0.55,0).box(1.3,1.5,2.15,{bottom:true}).pop();
     b.C('#7fd0e8', MAT.GLOSS).push().T(-2.72,1.55,0).box(0.06,0.7,1.8).pop();
@@ -3377,7 +3422,7 @@ function buildFacilityMeshes(){
   }
   /* ---- photo spot (2x2) ---- */
   { const b = mb();
-    b.C('#ff7ea8', MAT.TINT);
+    b.C('#f797b6', MAT.TINT);
     b.push().T(-2.1,0,0).cyl(0.14,0.12,3.4,8).pop();
     b.push().T(2.1,0,0).cyl(0.14,0.12,3.4,8).pop();
     b.push().T(0,3.4,0).RZ(PI/2).cyl(0.13,0.13,4.3,8,{center:true}).pop();
@@ -3390,7 +3435,7 @@ function buildFacilityMeshes(){
   }
   /* ---- restroom (2x2) ---- */
   { const b = mb();
-    b.C('#6f8fb0', MAT.TINT).push().T(0,0,0).box(5.2,2.9,4.4,{bottom:true}).pop();
+    b.C('#9ccbf1', MAT.TINT).push().T(0,0,0).box(5.2,2.9,4.4,{bottom:true}).pop();
     b.C('#5a748f', MAT.FIXED).push().T(0,2.9,0).box(5.5,0.22,4.7).pop();
     b.C('#2c3340', MAT.FIXED);
     for(const sx of [-1.3,1.3]) b.push().T(sx,1.05,2.22).box(1.1,2.1,0.08).pop();
@@ -3404,7 +3449,7 @@ function buildFacilityMeshes(){
   /* ---- water station (1x1) ---- */
   { const b = mb();
     b.C(PAL.metal, MAT.GLOSS).push().T(0,0,0).cyl(0.85,0.75,0.28,12).pop();
-    b.C('#4fc0d8', MAT.TINT).push().T(0,0.28,0).cyl(0.55,0.45,0.9,10).pop();
+    b.C('#97e7f7', MAT.TINT).push().T(0,0.28,0).cyl(0.55,0.45,0.9,10).pop();
     b.C(PAL.metal, MAT.GLOSS);
     for(let i=0;i<3;i++){ const a=i/3*TAU; b.push().T(Math.cos(a)*0.42,1.18,Math.sin(a)*0.42).RZ(0.5).cyl(0.05,0.04,0.32,6).pop(); }
     b.C('#7fe0ec', MAT.EMIT).push().T(0,1.28,0).sphere(0.2,8,6).pop();
@@ -3412,7 +3457,7 @@ function buildFacilityMeshes(){
   }
   /* ---- shade canopy (2x2) ---- */
   { const b = mb();
-    b.C('#4fbf8f', MAT.TINT).canopy(5.4,5.4,2.5,0.65,0.30);
+    b.C('#99efc4', MAT.TINT).canopy(5.4,5.4,2.5,0.65,0.30);
     b.C(PAL.woodLt, MAT.FIXED);
     b.push().T(0,0,0).box(1.8,0.42,1.8,{bottom:true}).pop();
     b.push().T(0,0.42,0).box(2.1,0.09,2.1).pop();
@@ -3433,7 +3478,7 @@ function buildFacilityMeshes(){
   }
   /* ---- trash bins (1x1) ---- */
   { const b = mb();
-    const cols=['#5f9f6f','#4f8fc8','#c8a84f'];
+    const cols=['#9ce0a8','#4f8fc8','#c8a84f'];
     for(let i=0;i<3;i++){
       b.C(cols[i], i===0?MAT.TINT:MAT.FIXED);
       b.push().T(-0.72+i*0.72,0,0).cyl(0.32,0.28,0.9,9).pop();
@@ -3473,7 +3518,7 @@ function buildFacilityMeshes(){
   }
   /* ---- crowd fence (1x1) ---- */
   { const b = mb();
-    b.C('#e8a33a', MAT.TINT);
+    b.C('#f7cc97', MAT.TINT);
     b.push().T(-1.3,0,0).cyl(0.07,0.06,1.05,6).pop();
     b.push().T(1.3,0,0).cyl(0.07,0.06,1.05,6).pop();
     b.push().T(0,0.95,0).RZ(PI/2).cyl(0.055,0.055,2.7,6,{center:true}).pop();
@@ -3486,22 +3531,22 @@ function buildFacilityMeshes(){
   { const b = mb();
     b.C('#f4f7fa', MAT.TINT).canopy(5.2,4.6,2.6,0.7,0.14);
     b.C('#f8f2e4', MAT.FIXED).push().T(0,0,-1.7).box(4.8,2.1,0.9,{bottom:true}).pop();
-    b.C('#e85f6f', MAT.FIXED);
+    b.C('#f797a4', MAT.FIXED);
     b.push().T(0,1.9,-1.2).box(1.1,0.30,0.06).pop();
     b.push().T(0,1.9,-1.2).box(0.30,1.1,0.06).pop();
     b.C('#f4f7fa', MAT.FIXED).push().T(1.4,0,0.9).box(1.5,0.55,2.0,{bottom:true}).pop();
     b.C('#dfe6ec', MAT.FIXED).push().T(1.4,0.55,0.9).box(1.6,0.10,2.1).pop();
-    b.C('#e85f6f', MAT.EMIT).push().T(0,2.9,0).sphere(0.16,7,5).pop();
+    b.C('#f797a4', MAT.EMIT).push().T(0,2.9,0).sphere(0.16,7,5).pop();
     RD.addMesh('firstaid', b.build('firstaid'));
   }
   /* ---- info center (2x1) ---- */
   { const b = mb();
-    b.C('#5f9fe8', MAT.TINT).push().T(0,0,-0.5).box(5.0,2.5,2.0,{bottom:true}).pop();
+    b.C('#97c4f7', MAT.TINT).push().T(0,0,-0.5).box(5.0,2.5,2.0,{bottom:true}).pop();
     b.C('#3f7cc0', MAT.FIXED).push().T(0,2.5,-0.5).box(5.4,0.2,2.4).pop();
     b.C(PAL.woodLt, MAT.FIXED).push().T(0,0,0.85).box(4.4,1.05,0.7,{bottom:true}).pop();
     b.C(PAL.white, MAT.FIXED).push().T(0,1.05,0.85).box(4.6,0.09,0.9).pop();
     b.C('#ffffff', MAT.EMIT).push().T(0,2.05,0.52).box(1.0,0.7,0.05).pop();
-    b.C('#5f9fe8', MAT.FIXED).push().T(0,2.05,0.56).box(0.22,0.5,0.03).pop();
+    b.C('#97c4f7', MAT.FIXED).push().T(0,2.05,0.56).box(0.22,0.5,0.03).pop();
     b.C('#f4f7fa', MAT.TINT).canopy(5.6,2.6,2.9,0.4,0.1);
     RD.addMesh('info', b.build('info'));
   }
@@ -3509,7 +3554,7 @@ function buildFacilityMeshes(){
   { const b = mb();
     b.C(PAL.woodLt, MAT.FIXED);
     for(const [sx,sz] of [[-1,-1],[1,-1],[1,1],[-1,1]]) b.push().T(sx*0.85,0,sz*0.85).RZ(sx*-0.06).RX(sz*0.06).cyl(0.1,0.09,2.9,6).pop();
-    b.C('#ff8f4f', MAT.TINT).push().T(0,2.9,0).box(2.3,1.4,2.3,{bottom:true}).pop();
+    b.C('#f7bb97', MAT.TINT).push().T(0,2.9,0).box(2.3,1.4,2.3,{bottom:true}).pop();
     b.C('#f4f7fa', MAT.FIXED).push().T(0,4.3,0).pyramid(2.7,2.7,0.7,0.15).pop();
     b.C('#2c3340', MAT.FIXED).push().T(0,3.7,1.17).box(1.7,0.8,0.05).pop();
     b.C('#ff5f3f', MAT.FIXED).push().T(0,3.3,-1.2).RX(PI/2).torus(0.32,0.1,10,6).pop();
@@ -3520,7 +3565,7 @@ function buildFacilityMeshes(){
     b.C(PAL.deck, MAT.FIXED).push().T(0,0.1,0).box(8.4,0.2,8.4).pop();
     b.C('#c89a5f', MAT.FIXED);
     for(let i=0;i<9;i++) b.push().T(-3.7+i*0.93,0.21,0).box(0.8,0.02,8.2).pop();
-    b.C('#a8d86f', MAT.TINT);
+    b.C('#d0f797', MAT.TINT);
     for(let i=0;i<6;i++){ const gx=(i%3-1)*2.2, gz=(Math.floor(i/3)-0.5)*2.4;
       b.push().T(gx,0.24,gz).box(1.4,0.06,0.7).pop(); }
     b.C(PAL.woodLt, MAT.FIXED);
@@ -3533,7 +3578,7 @@ function buildFacilityMeshes(){
   }
   /* ---- surf school (3x2) ---- */
   { const b = mb();
-    b.C('#3fb0e0', MAT.TINT).push().T(0,0,-0.9).box(7.0,2.6,3.4,{bottom:true}).pop();
+    b.C('#97daf7', MAT.TINT).push().T(0,0,-0.9).box(7.0,2.6,3.4,{bottom:true}).pop();
     b.C('#2a86ac', MAT.FIXED).push().T(0,2.6,-0.9).pyramid(7.6,4.0,0.8,0.4).pop();
     b.C('#2c3340', MAT.FIXED).push().T(-1.5,1.2,0.82).box(2.0,1.6,0.06).pop();
     b.C(PAL.woodLt, MAT.FIXED).push().T(-1.5,0.72,0.94).box(2.2,0.1,0.4).pop();
@@ -3555,7 +3600,7 @@ function buildFacilityMeshes(){
   { const b = mb();
     b.C(PAL.dark, MAT.FIXED).push().T(0,0.5,0).box(10.6,1.0,7.4).pop();
     b.C('#3a3f4a', MAT.FIXED).push().T(0,1.0,0).box(10.8,0.08,7.6).pop();
-    b.C('#8f6fe0', MAT.TINT).push().T(0,1.0,-3.3).box(10.4,4.2,0.3,{bottom:true}).pop();
+    b.C('#b597f7', MAT.TINT).push().T(0,1.0,-3.3).box(10.4,4.2,0.3,{bottom:true}).pop();
     b.C('#1b2028', MAT.FIXED).push().T(0,1.2,-3.1).box(8.6,3.2,0.1,{bottom:true}).pop();
     b.C(PAL.metal, MAT.GLOSS);
     for(const sx of [-5.0,5.0]) b.push().T(sx,1.0,-3.2).cyl(0.11,0.11,5.0,6).pop();
@@ -3564,7 +3609,7 @@ function buildFacilityMeshes(){
     for(const sz of [-3.2,3.2]) b.push().T(0,5.9,sz).RZ(PI/2).cyl(0.09,0.09,10.2,6,{center:true}).pop();
     b.C('#f8f2e4', MAT.LEAF).push().T(0,6.0,0).canopy(11.0,7.4,0.05,0.85,0.3).pop();
     for(let i=0;i<5;i++){ b.C(PAL.dark, MAT.FIXED); b.push().T(-4+i*2,5.7,1.4).S(0.9).cyl(0.14,0.18,0.34,8).pop();
-      b.C(['#ff5f6d','#6cb6ff','#4fe8c0','#ffd166','#b06ce0'][i], MAT.EMIT); b.push().T(-4+i*2,5.5,1.4).cyl(0.16,0.16,0.03,8).pop(); }
+      b.C(['#ff5f6d','#6cb6ff','#4fe8c0','#ffd166','#d197f7'][i], MAT.EMIT); b.push().T(-4+i*2,5.5,1.4).cyl(0.16,0.16,0.03,8).pop(); }
     b.C(PAL.dark, MAT.FIXED);
     for(const sx of [-4.4,4.4]){ b.push().T(sx,1.05,2.4).S(1.0).box(0.9,1.5,0.7,{bottom:true}).pop(); }
     RD.addMesh('smallstage', b.build('smallstage'));
@@ -3592,7 +3637,7 @@ function buildFacilityMeshes(){
     for(let i=0;i<9;i++){
       const x=-7.2+i*1.8;
       b.C(PAL.dark, MAT.FIXED).push().T(x,10.0,-1.6).cyl(0.16,0.2,0.4,8).pop();
-      b.C(['#ff5f6d','#6cb6ff','#4fe8c0','#ffd166','#b06ce0','#ff9ec0','#7fe0ec','#ffb347','#c8a0ff'][i], MAT.EMIT);
+      b.C(['#ff5f6d','#6cb6ff','#4fe8c0','#ffd166','#d197f7','#ff9ec0','#7fe0ec','#ffb347','#c8a0ff'][i], MAT.EMIT);
       b.push().T(x,9.78,-1.6).cyl(0.18,0.18,0.04,8).pop();
     }
     for(let i=0;i<7;i++){
@@ -3613,7 +3658,7 @@ function buildFacilityMeshes(){
   }
   /* ---- entrance gate (4x1) ---- */
   { const b = mb();
-    b.C('#7a6a4f', MAT.FIXED);
+    b.C('#ebcc9b', MAT.FIXED);
     for(const sx of [-5.4,5.4]) b.push().T(sx,0,0).box(1.1,5.2,1.6,{bottom:true}).pop();
     b.C('#2ec4b6', MAT.TINT);
     const seg=14, base=b.vcount;
@@ -3638,7 +3683,7 @@ function buildFacilityMeshes(){
   }
   /* ---- ops HQ (3x2) ---- */
   { const b = mb();
-    b.C('#4a5a6a', MAT.TINT).push().T(0,0,0).box(8.0,3.0,5.0,{bottom:true}).pop();
+    b.C('#aac3d6', MAT.TINT).push().T(0,0,0).box(8.0,3.0,5.0,{bottom:true}).pop();
     b.C('#38454f', MAT.FIXED).push().T(0,3.0,0).box(8.4,0.25,5.4).pop();
     b.C('#7fd0e8', MAT.GLOSS);
     for(let i=0;i<4;i++) b.push().T(-2.7+i*1.8,1.7,2.52).box(1.2,1.0,0.05).pop();
@@ -3766,7 +3811,7 @@ function buildCharMeshes(){
   }
   /* --- minigame: jellyfish obstacle --- */
   { const b = mb();
-    b.C('#ff7ea8', MAT.TINT);
+    b.C('#f797b6', MAT.TINT);
     b.push().T(0,0.5,0).S(1,0.8,1).sphere(0.55,12,7,{hemi:true}).pop();
     b.C('#ff9ec0', MAT.LEAF);
     for(let i=0;i<6;i++){ const a=i/6*TAU; b.push().T(Math.cos(a)*0.3,0.48,Math.sin(a)*0.3).capsule(0.05,0.55,5).pop(); }
@@ -6102,12 +6147,12 @@ const SCENE = {
       const left = R.chance(0.5);
       const x = left ? R.range(-96,-56) : R.range(56,96);
       const z = R.range(21,27);
-      add('umbrella', x, z, R.range(0,TAU), R.range(0.9,1.15), R.pick(['#ff7a5c','#ffd166','#4fe8c0','#6cb6ff','#ff9ec0']));
+      add('umbrella', x, z, R.range(0,TAU), R.range(0.9,1.15), R.pick(['#f7a797','#ffe6a8','#b0ecd8','#bcd8f5','#ffc9dc']));
       add('chair', x+R.range(-2.5,2.5), z+R.range(-1.5,1.5), R.range(0,TAU), 1);
     }
     /* buoys in the water */
     for(let i=0;i<22;i++){
-      add('buoy', R.range(-100,100), R.range(32,62), 0, R.range(0.9,1.4), R.pick(['#ff5f3f','#ffd166','#4fe8c0']), 0, -0.55);
+      add('buoy', R.range(-100,100), R.range(32,62), 0, R.range(0.9,1.4), R.pick(['#f6a595','#ffe6a8','#b0ecd8']), 0, -0.55);
     }
     /* promenade lamps along the emergency lanes */
     for(let z=-30; z<=13; z+=7.5){
@@ -6118,20 +6163,34 @@ const SCENE = {
       if(Math.abs(x)<7) continue;
       add('streetlamp', x, 17.2, PI/2, 1);
     }
+    /* balloons at the gate and along the beach approach */
+    for(const [bx,bz] of [[-8.5,-29.5],[8.5,-29.5],[-13,-24],[13,-24],
+                          [-26,17.2],[26,17.2],[-40,17.2],[40,17.2],[0,-27.5]]){
+      add('balloons', bx, bz, R.range(0,TAU), R.range(0.92,1.18));
+    }
+    /* bunting strung between the promenade lamps (lanes are unbuildable) */
+    for(let z=-26.5; z<=10; z+=7.5){
+      add('bunting', -5.2, z, 0, 1, null, 0, 3.15);
+      add('bunting',  5.2, z, 0, 1, null, 0, 3.15);
+    }
+    for(let x=-40; x<=40; x+=11){
+      if(Math.abs(x)<8) continue;
+      add('bunting', x, 17.2, PI/2, 1, null, 0, 3.15);
+    }
     /* perimeter flags */
     for(let i=0;i<18;i++){
       const t=i/17;
       add('flag', lerp(-50,50,t), -35.5, PI, R.range(0.9,1.15),
-          ['#ff7a5c','#ffd166','#2ec4b6','#6cb6ff','#b06ce0'][i%5]);
+          ['#ffb8a8','#ffe6a8','#a8e4dc','#bcd8f5','#d8bcf0'][i%5]);
     }
     for(let i=0;i<10;i++){
-      add('flag', -54.5, lerp(-30,18,i/9), PI/2, 1, ['#2ec4b6','#ffd166','#ff7a5c'][i%3]);
-      add('flag',  54.5, lerp(-30,18,i/9), -PI/2, 1, ['#6cb6ff','#ff9ec0','#4fe8c0'][i%3]);
+      add('flag', -54.5, lerp(-30,18,i/9), PI/2, 1, ['#a8e4dc','#ffe6a8','#ffb8a8'][i%3]);
+      add('flag',  54.5, lerp(-30,18,i/9), -PI/2, 1, ['#bcd8f5','#ffc9dc','#b8ecd8'][i%3]);
     }
     /* surfboards + crates near the beach edges */
     for(let i=0;i<10;i++){
       const x = R.chance(0.5)? R.range(-90,-58) : R.range(58,90);
-      add('surfboard', x, R.range(22,26), R.range(0,TAU), 1, R.pick(['#f4f7fa','#ffd166','#ff7a5c','#4fe8c0']));
+      add('surfboard', x, R.range(22,26), R.range(0,TAU), 1, R.pick(['#fbfdff','#ffe6a8','#f7a797','#b0ecd8']));
     }
     this.labelRoot = el('div',{ class:'no-pe', style:{position:'fixed', inset:'0', zIndex:'12', pointerEvents:'none'} });
     document.body.appendChild(this.labelRoot);
@@ -7888,7 +7947,7 @@ const FINALE = {
     const R = makeRNG(4242 + W.finaleTier);
     const start = W.finaleTier===0 ? 22 : 26;
     const span = this.dur - start - 6;
-    const COLORS = ['#ff5f6d','#ffd166','#4fe8c0','#6cb6ff','#ff9ec0','#b06ce0','#ffffff','#ff8f4f'];
+    const COLORS = ['#ff5f6d','#ffd166','#4fe8c0','#6cb6ff','#ff9ec0','#d197f7','#ffffff','#f7bb97'];
     const SHAPES = ['burst','burst','ring','willow','heart'];
     for(let i=0;i<shells;i++){
       const p = i/Math.max(1,shells-1);
@@ -8871,7 +8930,7 @@ function frame(now){
   RD.render({
     exposure: MINI.active ? 1.08 : undefined,
     bloomMul: FINALE.active ? 1.5 : 1,
-    sat: FINALE.active ? 1.16 : 1.06
+    sat: FINALE.active ? 1.24 : 1.16
   });
 
   /* ---- UI ---- */
