@@ -6025,7 +6025,7 @@ const FX = {
    29. INPUT
    =========================================================================== */
 const IN = {
-  keys:new Set(), mx:0, my:0, mdx:0, mdy:0, wheel:0,
+  keys:new Set(), mx:0, my:0, mdx:0, mdy:0, wheel:0, edgeArmed:false,
   down:[false,false,false], clicked:[false,false,false], released:[false,false,false],
   locked:false, overUI:false,
   init(){
@@ -6037,13 +6037,17 @@ const IN = {
       Bus.emit('key', k, e);
     });
     addEventListener('keyup', e=>{ this.keys.delete(e.key.length===1?e.key.toLowerCase():e.key); });
-    addEventListener('blur', ()=>this.keys.clear());
+    addEventListener('blur', ()=>this.reset());
     CV.addEventListener('mousemove', e=>{
       if(this.locked){ this.mdx += e.movementX||0; this.mdy += e.movementY||0; }
       else { this.mdx += e.movementX||0; this.mdy += e.movementY||0; }
       this.mx = e.clientX; this.my = e.clientY;
     });
-    addEventListener('mousemove', e=>{ if(!this.locked){ this.mx=e.clientX; this.my=e.clientY; } });
+    addEventListener('mousemove', e=>{
+      if(!this.locked){ this.mx=e.clientX; this.my=e.clientY; }
+      this.edgeArmed = true;
+    });
+    addEventListener('mouseout', e=>{ if(!e.relatedTarget) this.edgeArmed = false; });
     CV.addEventListener('mousedown', e=>{ this.down[e.button]=true; this.clicked[e.button]=true; AUDIO.resume(); });
     addEventListener('mouseup', e=>{ this.down[e.button]=false; this.released[e.button]=true; });
     CV.addEventListener('contextmenu', e=>e.preventDefault());
@@ -6055,6 +6059,16 @@ const IN = {
     });
   },
   endFrame(){ this.mdx=0; this.mdy=0; this.wheel=0; this.clicked=[false,false,false]; this.released=[false,false,false]; },
+  /* Drop every held key and pending delta. Used whenever control changes hands
+     (minigame in/out, modal open/close) so a key held for one context cannot
+     leak into the next one and drive the camera on its own. */
+  reset(){
+    this.keys.clear();
+    this.mdx=0; this.mdy=0; this.wheel=0;
+    this.down=[false,false,false];
+    this.clicked=[false,false,false]; this.released=[false,false,false];
+    this.edgeArmed=false;
+  },
   key(k){ return this.keys.has(k); },
   lock(){ if(!this.locked && CV.requestPointerLock) CV.requestPointerLock(); },
   unlock(){ if(this.locked && document.exitPointerLock) document.exitPointerLock(); }
@@ -6084,6 +6098,7 @@ const CAM = {
     if(this.mode === m) return;
     const prev = this.mode;
     this.mode = m;
+    IN.reset();
     if(m === 'ground'){
       /* drop into the world near the current overview target */
       const f = NAV.nearestFree(this.tx, this.tz+6, 12);
@@ -6117,7 +6132,7 @@ const CAM = {
       if(IN.key('q')) this.tyaw -= dt*1.5;
       if(IN.key('e')) this.tyaw += dt*1.5;
       /* edge scroll */
-      if(SETTINGS.edgeScroll && !IN.overUI){
+      if(SETTINGS.edgeScroll && IN.edgeArmed && !IN.overUI && document.hasFocus()){
         const m=22;
         if(IN.mx < m) mx -= 1; else if(IN.mx > innerWidth-m) mx += 1;
         if(IN.my < m) mz -= 1; else if(IN.my > innerHeight-m) mz += 1;
@@ -7380,6 +7395,7 @@ Object.assign(UI, {
     root.innerHTML = '';
     root.classList.add('on');
     this.modalOpen = true;
+    IN.reset();
     IN.unlock();
     const m = el('div',{class:'modal'+(o.wide?' wide':'')+(o.narrow?' narrow':'')});
     const h = el('div',{class:'modal-h'});
@@ -7403,6 +7419,7 @@ Object.assign(UI, {
     root.innerHTML = '';
     this.modalOpen = false;
     this._modalOpts = null;
+    IN.reset();
     AUDIO.sfx('click');
     if(cb) cb();
   },
@@ -8629,6 +8646,7 @@ const MINI = {
     $('#ui').style.opacity='0.15'; $('#ui').style.pointerEvents='none';
     SCENE.hide(); UI.closeModal();
     CAM.mode='mini';
+    IN.reset();                       /* nothing held before the game may steer it */
     AUDIO.setScene('minigame');
     RD.heatMode=-1;
     $('#mgkeys').innerHTML = (LANG==='ko'?g.keys.ko:g.keys.en)
@@ -8646,6 +8664,7 @@ const MINI = {
     $('#mgbal').classList.remove('hide');
     $('#ui').style.opacity=''; $('#ui').style.pointerEvents='';
     CAM.mode='overview';
+    IN.reset();                       /* and nothing held during it may pan the camera */
     AUDIO.setScene(W.clock>1140?'night':'live');
     const sc = Math.round(this.score);
     W.minigameBest = Math.max(W.minigameBest, sc);
