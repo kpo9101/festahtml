@@ -68,7 +68,6 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 input,select,textarea{font:inherit;color:inherit}
 ::selection{background:var(--accent);color:#04121a}
 .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
-.num{font-variant-numeric:tabular-nums}
 .hide{display:none !important}
 .sr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 
@@ -140,13 +139,8 @@ input,select,textarea{font:inherit;color:inherit}
 .res .ico{width:20px;height:20px;display:grid;place-items:center;border-radius:6px;font-size:.8em;flex:0 0 auto}
 .res.gold .ico{background:rgba(255,200,97,.16);color:var(--gold)}
 .res.staff .ico{background:rgba(108,182,255,.16);color:var(--info)}
-.res.gem .ico{background:rgba(155,140,255,.16);color:var(--violet)}
 .res b{font-family:var(--mono);font-size:1.02em}
 .res small{color:var(--ink-3);font-weight:600;font-size:.78em}
-.res.flash-up{animation:flashUp .7s}
-.res.flash-dn{animation:flashDn .7s}
-@keyframes flashUp{0%{color:var(--ok);text-shadow:0 0 14px var(--ok)}100%{}}
-@keyframes flashDn{0%{color:var(--danger);text-shadow:0 0 14px var(--danger)}100%{}}
 
 /* metric pills */
 .metrics{display:flex;gap:8px;align-items:center}
@@ -421,7 +415,6 @@ input,select,textarea{font:inherit;color:inherit}
 .card .kv span{color:var(--ink-3)}
 .card .kv b{font-family:var(--mono)}
 .card .cost{position:absolute;top:12px;right:12px;font-family:var(--mono);font-weight:900;color:var(--gold);font-size:.88em}
-.card .ribbon{position:absolute;top:9px;left:-26px;transform:rotate(-38deg);background:var(--coral);color:#2c0c05;font-size:.6em;font-weight:900;padding:2px 30px;letter-spacing:.08em}
 
 .tierrow{display:flex;gap:10px;flex-wrap:wrap}
 .tier{flex:1;min-width:150px;padding:14px;border-radius:16px;border:1px solid var(--edge);background:rgba(255,255,255,.04);cursor:pointer;transition:all var(--t-fast);text-align:center;position:relative}
@@ -509,7 +502,6 @@ table.ledger .cid{font-family:var(--mono);font-size:.82em;color:var(--ink-3)}
 }
 #title.out{animation:titleOut .8s forwards}
 @keyframes titleOut{to{opacity:0;transform:scale(1.06);pointer-events:none}}
-#titlecv{position:absolute;inset:0;width:100%;height:100%;z-index:0}
 #title .tinner{position:relative;z-index:2;text-align:center;display:flex;flex-direction:column;align-items:center;gap:16px;padding:20px;max-width:min(760px,92vw)}
 #title .logo{position:relative}
 #title h1{
@@ -657,33 +649,26 @@ table.ledger .cid{font-family:var(--mono);font-size:.82em;color:var(--ink-3)}
   pointer-events:auto;z-index:2}
 #mgtut.on{display:grid}
 #mgtut .tc{
-  width:min(760px,94vw);max-height:92vh;overflow-y:auto;
+  width:min(440px,92vw);
   background:linear-gradient(170deg,#10203c,#0a1428 62%);
-  border:1px solid var(--edge-2);border-radius:22px;box-shadow:var(--sh-3);
-  padding:24px 26px;animation:modalIn .3s cubic-bezier(.2,.9,.25,1)
+  border:1px solid var(--edge-2);border-radius:18px;box-shadow:var(--sh-3);
+  padding:18px 20px;animation:modalIn .26s cubic-bezier(.2,.9,.25,1)
 }
-#mgtut .th{display:flex;align-items:center;gap:14px;margin-bottom:6px}
-#mgtut .th .g{font-size:2.4em;line-height:1;filter:drop-shadow(0 4px 12px rgba(0,0,0,.6))}
-#mgtut .th h2{margin:0;font-size:1.5em;font-weight:900;letter-spacing:-.01em}
-#mgtut .th .len{margin-left:auto;font:800 .78em var(--mono);color:var(--ink-3)}
-#mgtut .lead{margin:0 0 16px;color:var(--ink-2);font-size:.9em;line-height:1.6}
-#mgtut .cols{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-@media (max-width:720px){#mgtut .cols{grid-template-columns:1fr}}
-#mgtut .col{background:rgba(255,255,255,.045);border:1px solid var(--edge);
-  border-radius:14px;padding:13px}
-#mgtut .col h4{margin:0 0 7px;font-size:.72em;letter-spacing:.12em;text-transform:uppercase;
-  color:var(--ink-3);font-weight:800;display:flex;align-items:center;gap:6px}
-#mgtut .col li{font-size:.83em;line-height:1.55;color:var(--ink);margin:0 0 5px;list-style:none}
-#mgtut .col ul{margin:0;padding:0}
-#mgtut .col li b{color:var(--accent-2)}
-#mgtut .keys{display:flex;flex-wrap:wrap;gap:5px;align-items:center;font-size:.86em}
-#mgtut .tf{display:flex;align-items:center;gap:12px;margin-top:18px;flex-wrap:wrap}
+#mgtut .th{display:flex;align-items:center;gap:11px;margin-bottom:9px}
+#mgtut .th .g{font-size:1.9em;line-height:1}
+#mgtut .th h2{margin:0;font-size:1.18em;font-weight:900;letter-spacing:-.01em}
+#mgtut .th .len{margin-left:auto;font:800 .74em var(--mono);color:var(--ink-3)}
+#mgtut .lead{margin:0 0 12px;color:var(--ink);font-size:.87em;line-height:1.55}
+#mgtut .keys{display:flex;flex-wrap:wrap;gap:5px;align-items:center;font-size:.84em;
+  padding:8px 10px;border-radius:11px;background:rgba(255,255,255,.05);
+  border:1px solid var(--edge);color:var(--ink-2)}
+#mgtut .tf{display:flex;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap}
 #mgtut .tf .sp{flex:1}
-#mgtut .again{display:flex;align-items:center;gap:7px;font-size:.78em;color:var(--ink-3);cursor:pointer}
-#mgtut .again .box{width:17px;height:17px;border-radius:5px;border:1px solid var(--edge-2);
-  display:grid;place-items:center;font-size:.72em;background:rgba(0,0,0,.25)}
+#mgtut .again{display:flex;align-items:center;gap:6px;font-size:.74em;color:var(--ink-3);cursor:pointer}
+#mgtut .again .box{width:16px;height:16px;border-radius:5px;border:1px solid var(--edge-2);
+  display:grid;place-items:center;font-size:.7em;background:rgba(0,0,0,.25)}
 #mgtut .again.on .box{background:var(--accent);color:#04181a}
-#mgtut .clockwarn{font-size:.76em;color:var(--warn)}
+#mgtut .clockwarn{font-size:.7em;color:var(--warn);width:100%;margin-top:-2px}
 
 /* ============================================================ GROUND HUD */
 #groundhud{position:fixed;inset:0;z-index:40;display:none;pointer-events:none}
@@ -948,14 +933,12 @@ function el(tag, attrs, ...kids){
   }
   return n;
 }
-const frag = (...kids) => { const f = document.createDocumentFragment(); for(const k of kids.flat(4)) if(k) f.appendChild(typeof k==='object'?k:document.createTextNode(String(k))); return f; };
 
 /* ---------------- math ---------------- */
 const PI = Math.PI, TAU = Math.PI*2, DEG = Math.PI/180;
 const clamp  = (v,a,b) => v<a?a:(v>b?b:v);
 const clamp01= v => v<0?0:(v>1?1:v);
 const lerp   = (a,b,t) => a+(b-a)*t;
-const invLerp= (a,b,v) => a===b?0:(v-a)/(b-a);
 const smoothstep = (a,b,x) => { const t = clamp01((x-a)/(b-a||1e-6)); return t*t*(3-2*t); };
 const smootherstep = (a,b,x) => { const t = clamp01((x-a)/(b-a||1e-6)); return t*t*t*(t*(t*6-15)+10); };
 const damp   = (a,b,l,dt) => lerp(a,b,1-Math.exp(-l*dt));
@@ -1113,18 +1096,11 @@ const M4 = {
 };
 
 /* ---------------- color helpers ---------------- */
-function hsl2rgb(h,s,l){
-  h = mod(h,1);
-  const a = s*Math.min(l,1-l);
-  const f = n => { const k = mod(n + h*12, 12); return l - a*Math.max(-1, Math.min(k-3, Math.min(9-k, 1))); };
-  return [f(0), f(8), f(4)];
-}
 const hex2rgb = h => { const v = parseInt(h.replace('#',''),16); return [((v>>16)&255)/255, ((v>>8)&255)/255, (v&255)/255]; };
 function mixRGB(a,b,t){ return [lerp(a[0],b[0],t), lerp(a[1],b[1],t), lerp(a[2],b[2],t)]; }
 
 /* ---------------- misc formatting ---------------- */
 const fmtInt = n => Math.round(n).toLocaleString('en-US');
-const fmtG   = n => (n<0?'-':'') + fmtInt(Math.abs(n));
 const fmtSigned = n => (n>0?'+':'') + fmtInt(n);
 function fmtClock(min){
   const h = Math.floor(min/60), m = Math.floor(min%60);
@@ -4562,11 +4538,6 @@ const SHASH = {
       if(a) for(let i=0;i<a.length;i++) cb(a[i]);
     }
   },
-  count(x,z,rad){
-    let n=0; const r2=rad*rad;
-    this.near(x,z,o=>{ if(dist2(o.x,o.z,x,z) < r2) n++; });
-    return n;
-  }
 };
 
 /* ===========================================================================
@@ -4736,24 +4707,38 @@ function chooseDestination(n){
   n.reason = bestReason; n.reasonScore = bestScore;
   return true;
 }
-/* nearby wayfinding sign / info coverage 0..1 */
-function signQuality(x,z){
-  let q = 0;
+/* Only a few facility types emit light or wayfinding. These are queried per
+   agent per frame, so keep the candidate lists cached rather than rescanning
+   every facility each call. Rebuilt whenever facilities or their power change. */
+const FIELDS = { light:[], sign:[], dirty:true };
+function rebuildFields(){
+  FIELDS.light.length = 0; FIELDS.sign.length = 0;
   for(const f of W.facilities){
-    const r = f.def.signRadius;
-    if(!r || !f.active) continue;
+    if(!f.active) continue;
+    if(f.def.lightRadius) FIELDS.light.push(f);
+    if(f.def.signRadius)  FIELDS.sign.push(f);
+  }
+  FIELDS.dirty = false;
+}
+Bus.on('facilities', ()=>{ FIELDS.dirty = true; });
+
+function signQuality(x,z){
+  if(FIELDS.dirty) rebuildFields();
+  let q = 0;
+  for(let i=0;i<FIELDS.sign.length;i++){
+    const f = FIELDS.sign[i], r = f.def.signRadius;
     const d = dist(x,z,f.x,f.z);
-    if(d < r) q = Math.max(q, 1 - d/r);
+    if(d < r){ const v = 1 - d/r; if(v > q) q = v; }
   }
   return q;
 }
 function lightQuality(x,z){
+  if(FIELDS.dirty) rebuildFields();
   let q = 0;
-  for(const f of W.facilities){
-    const r = f.def.lightRadius;
-    if(!r || !f.active) continue;
+  for(let i=0;i<FIELDS.light.length;i++){
+    const f = FIELDS.light[i], r = f.def.lightRadius;
     const d = dist(x,z,f.x,f.z);
-    if(d < r) q = Math.min(1, q + (1 - d/r)*0.8);
+    if(d < r){ q += (1 - d/r)*0.8; if(q >= 1) return 1; }
   }
   return q;
 }
@@ -5153,7 +5138,7 @@ function updateNPCs(dt){
   /* --- facility service ticks --- */
   for(const f of W.facilities){
     if(f.boostT > 0){ f.boostT -= dt; if(f.boostT<=0){ f.throughput = 1; f.boost=0; } }
-    if(f.disabledUntil && W.clock >= f.disabledUntil){ f.disabledUntil = 0; f.active = true; }
+    if(f.disabledUntil && W.clock >= f.disabledUntil){ f.disabledUntil = 0; f.active = true; FIELDS.dirty = true; }
     if(!f.active || f.def.noQueue || !f.def.cap) continue;
     for(let k=f.serving.length-1;k>=0;k--){
       f.serveT[k] -= dt;
@@ -5283,7 +5268,7 @@ function spawnEvent(defId){
   if(def.disablesZone){
     for(const f of W.facilities){
       if(f.def.fixed) continue;
-      if(zoneAt(f.x,f.z).id === ev.zone.id){ f.active=false; f.disabledUntil = W.clock + 900; }
+      if(zoneAt(f.x,f.z).id === ev.zone.id){ f.active=false; f.disabledUntil = W.clock + 900; FIELDS.dirty = true; }
     }
   }
   W.events.push(ev);
@@ -5721,7 +5706,6 @@ const AUDIO = {
       case 'error':   this.tone(180, 0.19, 'sawtooth', 0.15, 0.003, 0, null, 96); break;
       case 'cash':    this.tone(880, 0.09, 'triangle', 0.16, 0.002);
                       setTimeout(()=>this.tone(1320,0.13,'triangle',0.13,0.002), 55); break;
-      case 'spend':   this.tone(420, 0.10, 'triangle', 0.12, 0.002, 0, null, 300); break;
       case 'alert':   this.tone(660, 0.13, 'square', 0.13, 0.004);
                       setTimeout(()=>this.tone(520,0.20,'square',0.12,0.004), 145); break;
       case 'good':    this.tone(660, 0.09, 'sine', 0.14, 0.003);
@@ -5917,14 +5901,6 @@ const AUDIO = {
     const g=c.createGain(); g.gain.setValueAtTime(0.040*v,t); g.gain.exponentialRampToValueAtTime(0.0001,t+0.045);
     s.connect(f); f.connect(g); g.connect(this.musicG);
     s.start(t); s.stop(t+0.06);
-  },
-  snare(t, v){
-    const c=this.ctx;
-    const s=c.createBufferSource(); s.buffer=this.noiseBuf;
-    const f=c.createBiquadFilter(); f.type='bandpass'; f.frequency.value=1900; f.Q.value=0.8;
-    const g=c.createGain(); g.gain.setValueAtTime(0.13*v,t); g.gain.exponentialRampToValueAtTime(0.0001,t+0.15);
-    s.connect(f); f.connect(g); g.connect(this.musicG); g.connect(this.verb);
-    s.start(t); s.stop(t+0.16);
   },
   hat(t, v){
     const c=this.ctx;
@@ -8725,32 +8701,18 @@ const MINIGAMES = [
 ];
 const MINIGAME_BY = {}; for(const g of MINIGAMES) MINIGAME_BY[g.id]=g;
 
-/* Pre-game briefing. Each game gets a goal, its controls, and the one thing
-   that actually decides a good run from a bad one. */
+/* Pre-game briefing — one line each. Enough to play cold, short enough that
+   nobody skips it. Festival time keeps running, so it stays terse. */
 const MINIGAME_BRIEF = {
   surf: {
-    goal:{ ko:['<b>링</b>을 모아 점수를 쌓습니다.','바위·부표·해파리에 부딪히면 감점되고 속도가 떨어집니다.','속도가 빠를수록 점수가 더 빨리 쌓입니다.'],
-           en:['Collect <b>rings</b> to build score.','Rocks, buoys and jellyfish cost points and speed.','The faster you go, the faster score accrues.'] },
-    keys:{ ko:'<span class="kbd">A</span> 왼쪽 · <span class="kbd">D</span> 오른쪽',
-           en:'<span class="kbd">A</span> left · <span class="kbd">D</span> right' },
-    tip:{ ko:['방향을 틀면 <b>균형 게이지</b>가 무너집니다.','게이지가 빨갛게 된 채로 버티면 <b>전복</b>됩니다.','링 욕심과 안정 사이를 재세요.'],
-          en:['Steering costs <b>balance</b>.','Stay in the red too long and you <b>wipe out</b>.','Weigh greed for rings against staying upright.'] }
-  },
+    ko:'링을 모으고 장애물을 피하세요. <b>방향을 틀면 균형이 무너집니다</b> — 빨간 구간에서 버티면 전복.',
+    en:'Collect rings, dodge obstacles. <b>Steering costs balance</b> — hold the red zone and you wipe out.' },
   fireworks: {
-    goal:{ ko:['무대에서 쏘아 올린 불꽃을 <b>정점</b>에서 터뜨립니다.','정확할수록 큰 불꽃과 높은 점수가 나옵니다.','놓치면 불발되고 콤보가 끊깁니다.'],
-           en:['Detonate each shell at its <b>apex</b>.','The tighter the timing, the bigger the burst and the score.','Miss it and the shell fizzles, breaking your combo.'] },
-    keys:{ ko:'<span class="kbd">Space</span> 격발', en:'<span class="kbd">Space</span> detonate' },
-    tip:{ ko:['불꽃 주위의 <b>링이 줄어들며</b> 정점에 맞춰 겹칩니다.','링이 심지에 딱 붙는 순간이 <b>PERFECT</b>입니다.','한 번에 하나씩만 판정되니 서두르지 마세요.'],
-          en:['A <b>ring shrinks</b> onto each shell, meeting it at the apex.','The instant it touches the core is <b>PERFECT</b>.','Only one shell is judged per press — do not mash.'] }
-  },
+    ko:'줄어드는 <b>링이 불꽃 심지에 겹치는 순간</b> 격발하세요. 한 번에 하나만 판정됩니다.',
+    en:'Fire the instant the <b>shrinking ring meets the shell</b>. Only one is judged per press.' },
   pocha: {
-    goal:{ ko:['주문이 <b>색 순서</b>로 표시됩니다.','그 순서대로 1~4번 조리대를 눌러 접시를 완성하세요.','주문을 완성할수록 콤보가 올라갑니다.'],
-           en:['Each ticket shows a <b>colour sequence</b>.','Hit stations 1–4 in that order to plate the dish.','Every completed ticket raises your combo.'] },
-    keys:{ ko:'<span class="kbd">1</span><span class="kbd">2</span><span class="kbd">3</span><span class="kbd">4</span> 조리대',
-           en:'<span class="kbd">1</span><span class="kbd">2</span><span class="kbd">3</span><span class="kbd">4</span> stations' },
-    tip:{ ko:['<b>다음에 눌러야 할 조리대</b>가 빛나고 바닥에 링이 뜹니다.','틀리면 그 주문은 <b>처음부터</b> 다시입니다.','조리대마다 짧은 조리 시간이 있어 연타는 통하지 않습니다.'],
-          en:['The <b>next station</b> glows and gets a ring on the ground.','A wrong key restarts that ticket <b>from the top</b>.','Each station needs a moment to cook — mashing will not help.'] }
-  }
+    ko:'<b>빛나는 조리대를 순서대로</b> 누르세요. 하나라도 틀리면 그 주문은 처음부터입니다.',
+    en:'Hit the <b>glowing stations in order</b>. One wrong key restarts the ticket.' }
 };
 
 /* is a game available right now, and if not, why */
@@ -8799,38 +8761,32 @@ const MINI = {
      the player is told as much rather than being quietly charged for reading. */
   showBrief(g){
     this.phase = 'brief';
-    const br = MINIGAME_BRIEF[g.id];
-    const L = LANG==='ko';
+    const br = MINIGAME_BRIEF[g.id], L = LANG==='ko';
+    const again = el('div',{class:'again'}, el('span',{class:'box',text:''}),
+      el('span',{text:T('다시 안 보기','Skip next time')}));
+    again.addEventListener('click',()=>{
+      const on = !again.classList.contains('on');
+      again.classList.toggle('on', on);
+      again.querySelector('.box').textContent = on ? '✓' : '';
+      SETTINGS.minigameTutorial = !on; SETTINGS.apply();
+    });
     const box = $('#mgtut');
-    const list = arr => el('ul',{}, ...arr.map(t=>el('li',{html:'• '+t})));
-    const card = el('div',{class:'tc'},
+    box.innerHTML = '';
+    box.appendChild(el('div',{class:'tc'},
       el('div',{class:'th'},
         el('span',{class:'g',text:g.g}),
         el('h2',{text:L?g.ko:g.en}),
         el('span',{class:'len',text:g.dur+'s'})),
-      el('p',{class:'lead',text:L?g.desc.ko:g.desc.en}),
-      el('div',{class:'cols'},
-        el('div',{class:'col'}, el('h4',{},el('span',{text:'🎯'}),el('span',{text:T('목표','Goal')})),
-          list(L?br.goal.ko:br.goal.en)),
-        el('div',{class:'col'}, el('h4',{},el('span',{text:'🎮'}),el('span',{text:T('조작','Controls')})),
-          el('div',{class:'keys',html:L?br.keys.ko:br.keys.en}),
-          el('div',{class:'keys',style:{marginTop:'8px'},
-            html:'<span class="kbd">Esc</span> '+T('언제든 포기','Quit any time')})),
-        el('div',{class:'col'}, el('h4',{},el('span',{text:'💡'}),el('span',{text:T('요령','Tips')})),
-          list(L?br.tip.ko:br.tip.en))),
+      el('p',{class:'lead',html:L?br.ko:br.en}),
+      el('div',{class:'keys',html:(L?g.keys.ko:g.keys.en)
+        +' &nbsp;·&nbsp; <span class="kbd">Esc</span> '+T('포기','Quit')}),
       el('div',{class:'tf'},
-        (()=>{ const a=el('div',{class:'again'}, el('span',{class:'box',text:''}),
-                 el('span',{text:T('다음부터 표시하지 않기','Do not show again')}));
-               a.addEventListener('click',()=>{ const on=!a.classList.contains('on');
-                 a.classList.toggle('on',on); a.querySelector('.box').textContent = on?'✓':'';
-                 SETTINGS.minigameTutorial = !on; SETTINGS.apply(); });
-               return a; })(),
+        again,
         el('div',{class:'sp'}),
-        el('span',{class:'clockwarn',text:'⏱ '+T('읽는 동안에도 축제 시간은 흐릅니다','Festival time keeps running while you read')}),
-        el('button',{class:'btn pri lg',html:T('시작','Start')+' <span class="k">Space</span>',
-          onclick:()=>this.beginPlay()})));
-    box.innerHTML='';
-    box.appendChild(card);
+        el('button',{class:'btn pri',html:T('시작','Start')+' <span class="k">Space</span>',
+          onclick:()=>this.beginPlay()}),
+        el('span',{class:'clockwarn',
+          text:'⏱ '+T('읽는 동안에도 축제 시간은 흐릅니다','Festival time keeps running')}))));
     box.classList.add('on');
   },
   beginPlay(){
@@ -9907,8 +9863,11 @@ function updateSim(sdt){
   for(const f of W.facilities){
     if(f.def.dirties || f.def.cat==='food') HEAT.addLitter(f.x, f.z, sdt*0.0012*(f.queue.length+1));
   }
-  /* recycling bins clean their radius */
-  for(const f of W.facilities){
+  /* recycling bins clean their radius (cheap cadence, same as the field sweep) */
+  W._binT = (W._binT||0) + sdt;
+  const binStep = W._binT >= 0.25 ? W._binT : 0;
+  if(binStep) W._binT = 0;
+  for(const f of (binStep ? W.facilities : [])){
     if(!f.def.cleanRadius || !f.active) continue;
     const cw = HEAT.area[2]/HEAT_W, ch = HEAT.area[3]/HEAT_H;
     const cx = Math.floor((f.x-HEAT.area[0])/cw), cz = Math.floor((f.z-HEAT.area[1])/ch);
@@ -9918,35 +9877,36 @@ function updateSim(sdt){
       if(X<0||Z<0||X>=HEAT_W||Z>=HEAT_H) continue;
       if(Math.hypot(dx*cw, dz*ch) > f.def.cleanRadius) continue;
       const i = Z*HEAT_W+X;
-      HEAT.litter[i] = Math.max(0, HEAT.litter[i] - sdt*0.010);
+      HEAT.litter[i] = Math.max(0, HEAT.litter[i] - binStep*0.010);
     }
   }
   /* buzz decays toward a baseline so a good day cannot snowball forever */
   W.metrics.buzz = damp(W.metrics.buzz, 24, 0.0013, sdt);
-  /* --- crowd-density safety pressure: measured once over the whole field,
-         never per-NPC (that scaled with population and flattened safety) --- */
-  let overSum = 0;
-  for(let i=0;i<HEAT.crowd.length;i++){
-    const c = HEAT.crowd[i];
-    if(c > 6.0) overSum += Math.min(4, c-6.0);
+  /* These three sweep the whole heat field and the whole crowd. They feed
+     slow-moving metrics, so running them every substep (up to 12 per frame at
+     x4) was pure waste — batch them onto a fixed cadence instead. */
+  W._fieldT = (W._fieldT||0) + sdt;
+  if(W._fieldT >= 0.25){
+    const fdt = W._fieldT; W._fieldT = 0;
+    let overSum = 0;
+    const HC = HEAT.crowd;
+    for(let i=0;i<HC.length;i++){ const c = HC[i]; if(c > 6.0) overSum += Math.min(4, c-6.0); }
+    if(overSum > 0) W.safetyEvent(-fdt*Math.min(1.4, overSum*0.012), 'CROWD_DENSITY');
+    if(W.clock > 1140 && W.npcs.length){
+      let unlit = 0;
+      for(const n of W.npcs) if(lightQuality(n.x,n.z) < 0.15) unlit++;
+      if(unlit/W.npcs.length > 0.55) W.safetyEvent(-fdt*0.16, 'NIGHT_DARK');
+    }
+    const unattended = W.events.filter(e=>!e.done && !e.def.good && e.assigned < e.def.staff).length;
+    if(!unattended && overSum <= 0) W.safetyEvent(fdt*0.30, 'SAFETY_INFRA');
+    let infra = 0;
+    for(const f of W.facilities) if(f.def.safety && f.active) infra += f.def.safety;
+    W.metrics.safety = clamp(W.metrics.safety, 0, Math.min(100, 76 + infra));
+    let lit = 0;
+    const HL = HEAT.litter;
+    for(let i=0;i<HL.length;i++) lit += HL[i];
+    W.metrics.clean = damp(W.metrics.clean, clamp(100 - lit*0.30, 0, 100), 0.35, fdt);
   }
-  if(overSum > 0) W.safetyEvent(-sdt*Math.min(1.4, overSum*0.012), 'CROWD_DENSITY');
-  /* night darkness pressure */
-  if(W.clock > 1140){
-    let unlit = 0;
-    for(const n of W.npcs) if(lightQuality(n.x,n.z) < 0.15) unlit++;
-    if(W.npcs.length && unlit/W.npcs.length > 0.55) W.safetyEvent(-sdt*0.16, 'NIGHT_DARK');
-  }
-  /* safety recovers slowly when nothing is wrong */
-  const unattended = W.events.filter(e=>!e.done && !e.def.good && e.assigned < e.def.staff).length;
-  if(!unattended && overSum <= 0) W.safetyEvent(sdt*0.30, 'SAFETY_INFRA');
-  let infra = 0;
-  for(const f of W.facilities) if(f.def.safety && f.active) infra += f.def.safety;
-  W.metrics.safety = clamp(W.metrics.safety, 0, Math.min(100, 76 + infra));
-  /* cleanliness from total litter mass across the grounds */
-  let lit = 0;
-  for(let i=0;i<HEAT.litter.length;i++) lit += HEAT.litter[i];
-  W.metrics.clean = damp(W.metrics.clean, clamp(100 - lit*0.30, 0, 100), 0.35, sdt);
 }
 function tickSlow(dt){
   navTimer += dt;
