@@ -534,6 +534,52 @@ table.ledger .cid{font-family:var(--mono);font-size:.82em;color:var(--ink-3)}
 #title .foot a{color:#7fa5cd;text-decoration:none;border-bottom:1px dotted #46617f}
 #title .langtoggle{position:absolute;top:16px;right:16px;z-index:3;display:flex;gap:4px}
 
+/* globe pin labels */
+.globe-label{
+  transform:translate(-50%,-100%);
+  display:flex;flex-direction:column;align-items:center;gap:2px;
+  padding:0;background:none;border:0;cursor:pointer;white-space:nowrap;
+  font:inherit;transition:transform var(--t-fast)
+}
+.globe-label i{display:block;width:1px;height:16px;background:linear-gradient(180deg,transparent,rgba(255,255,255,.55))}
+.globe-label b{
+  padding:3px 9px;border-radius:999px;font-size:.74em;font-weight:800;letter-spacing:.01em;
+  background:rgba(6,14,30,.82);border:1px solid rgba(140,190,255,.3);color:#dbe9fb;
+  backdrop-filter:blur(6px)
+}
+.globe-label span{font-size:.6em;font-weight:800;letter-spacing:.08em;margin-top:1px}
+.globe-label .go{color:#ff9f8c;text-shadow:0 0 12px rgba(255,120,90,.7)}
+.globe-label .lk{color:#7f8ea3}
+.globe-label.open b{
+  background:linear-gradient(180deg,rgba(255,140,110,.30),rgba(255,110,90,.16));
+  border-color:rgba(255,150,120,.75);color:#fff;font-size:.86em;
+  box-shadow:0 0 22px rgba(255,120,90,.42)
+}
+.globe-label.open i{height:26px;background:linear-gradient(180deg,transparent,rgba(255,150,120,.9))}
+.globe-label.open:hover{transform:translate(-50%,-100%) scale(1.08)}
+.globe-label.locked{opacity:.62}
+.globe-label.locked:hover{opacity:.9}
+#title.globe-mode{pointer-events:none}
+#title.globe-mode .tinner{
+  position:absolute;left:max(26px,5vw);top:50%;transform:translateY(-50%);
+  align-items:flex-start;text-align:left;max-width:min(430px,44vw);pointer-events:auto
+}
+#title.globe-mode .langtoggle,#title.globe-mode .foot{pointer-events:auto}
+#title.globe-mode h1{font-size:clamp(2.1em,5vw,4.1em)}
+#title.globe-mode .blurb{max-width:400px}
+#title.globe-mode .menu{width:min(310px,40vw)}
+#globehint{
+  position:fixed;left:50%;bottom:74px;transform:translateX(-50%);z-index:203;
+  font-size:.74em;color:#8fb0d4;letter-spacing:.06em;pointer-events:none;
+  display:flex;gap:14px;align-items:center;text-shadow:0 2px 8px #000
+}
+@media (max-width:860px){
+  #title.globe-mode .tinner{position:relative;left:auto;top:auto;transform:none;
+    align-items:center;text-align:center;max-width:min(560px,92vw);
+    background:rgba(4,10,22,.55);border-radius:20px;padding:18px}
+  #title.globe-mode .blurb{max-width:none}
+}
+
 /* atlas */
 .atlas{position:relative;width:100%;aspect-ratio:16/9;border-radius:18px;overflow:hidden;border:1px solid var(--edge-2);background:linear-gradient(160deg,#0b2340,#071528)}
 .atlas .pin{position:absolute;transform:translate(-50%,-100%);cursor:pointer;transition:transform var(--t-fast)}
@@ -3840,7 +3886,9 @@ function buildAllMeshes(onProgress){
   buildFacilityMeshes();
   onProgress && onProgress(0.85, 'facilities');
   buildCharMeshes();
-  onProgress && onProgress(0.95, 'characters');
+  onProgress && onProgress(0.93, 'characters');
+  buildGlobeMeshes();
+  onProgress && onProgress(0.97, 'globe');
   RD.get('terrain').noShadow = true;
   RD.get('grass').noShadow = true;
   RD.get('bulb').noShadow = true;
@@ -8520,16 +8568,325 @@ function saveBest(R){
 function loadBest(){ try{ return JSON.parse(localStorage.getItem('ff_best')); }catch(e){ return null; } }
 function metaGems(){ try{ return (JSON.parse(localStorage.getItem('ff_meta')||'{}').gems)||0; }catch(e){ return 0; } }
 /* ===========================================================================
+   38b. GLOBE — start-screen world map
+   Land is a 3-degree lat/lon mask given as [latBandCentre, [[lon0,lon1],...]].
+   A tile mask is far easier to keep geographically honest than hand-drawn
+   coastline vectors, and the faceted result suits the low-poly art.
+   =========================================================================== */
+const GLOBE_STEP = 3;
+const GLOBE_LAND = [
+ [82,[[-62,-20]]],
+ [79,[[-70,-18]],],
+ [76,[[-90,-16],[52,68],[90,108]]],
+ [73,[[-115,-16],[52,80],[88,112],[140,152]]],
+ [70,[[-160,-60],[-52,-20],[18,30],[54,180]]],
+ [67,[[-165,-58],[-52,-24],[-24,-14],[12,30],[32,180]]],
+ [64,[[-166,-56],[-50,-32],[-24,-14],[8,30],[32,180]]],
+ [61,[[-166,-56],[-48,-40],[4,30],[32,180]]],
+ [58,[[-162,-56],[-8,-2],[4,30],[32,180]]],
+ [55,[[-170,-152],[-136,-54],[-8,-1],[6,30],[32,180]]],
+ [52,[[-172,-154],[-132,-54],[-10,2],[4,30],[32,143]]],
+ [49,[[-128,-54],[-6,3],[4,30],[32,142]]],
+ [46,[[-126,-62],[-2,30],[32,146]]],
+ [43,[[-125,-68],[-9,18],[18,48],[48,136],[140,146]]],
+ [40,[[-125,-70],[-9,-1],[8,28],[28,48],[48,124],[126,130],[138,142]]],
+ [37,[[-123,-74],[-9,-1],[10,27],[27,48],[48,122],[126,130],[136,141]]],
+ [34,[[-121,-76],[-7,11],[20,37],[37,60],[60,121],[126,130],[131,141]]],
+ [31,[[-118,-78],[-9,34],[34,58],[60,122],[130,140]]],
+ [28,[[-116,-80],[-12,34],[34,58],[60,122],[129,131]]],
+ [25,[[-114,-96],[-83,-79],[-15,35],[35,58],[62,122]]],
+ [22,[[-110,-96],[-85,-73],[-17,36],[38,58],[68,121]]],
+ [19,[[-106,-95],[-88,-69],[-17,39],[41,56],[71,109],[120,124]]],
+ [16,[[-97,-86],[-17,43],[42,55],[73,96],[96,108],[120,125]]],
+ [13,[[-92,-83],[-16,46],[43,52],[74,81],[97,108],[120,126]]],
+ [10,[[-86,-77],[-75,-60],[-15,48],[44,51],[76,80],[98,107],[121,126]]],
+ [7,[[-81,-58],[-12,47],[80,82],[99,105],[117,126]]],
+ [4,[[-80,-50],[-9,47],[95,119],[125,127]]],
+ [1,[[-80,-48],[8,45],[96,120],[127,129]]],
+ [-2,[[-80,-44],[10,43],[98,120],[130,136]]],
+ [-5,[[-80,-36],[11,42],[100,120],[130,140]]],
+ [-8,[[-79,-35],[12,41],[112,120],[122,141]]],
+ [-11,[[-77,-35],[13,41],[119,131],[131,143]]],
+ [-14,[[-76,-38],[13,41],[44,50],[125,143]]],
+ [-17,[[-72,-39],[12,37],[43,50],[122,147]]],
+ [-20,[[-70,-40],[13,36],[43,49],[114,150]]],
+ [-23,[[-70,-41],[14,35],[43,48],[113,152]]],
+ [-26,[[-71,-47],[15,33],[113,153]]],
+ [-29,[[-72,-49],[16,32],[114,153]]],
+ [-32,[[-72,-51],[17,29],[115,152]]],
+ [-35,[[-73,-53],[18,27],[116,150]]],
+ [-38,[[-73,-57],[140,149],[173,178]]],
+ [-41,[[-74,-62],[171,177]]],
+ [-44,[[-75,-65],[168,174]]],
+ [-47,[[-75,-67]]],
+ [-50,[[-75,-68]]],
+ [-53,[[-74,-67]]],
+ [-56,[[-71,-67]]],
+ [-62,[[-64,-57]]],
+ [-65,[[-65,-57]]],
+ [-68,[[-180,-55],[-40,180]]],
+ [-71,[[-180,180]]],
+ [-74,[[-180,180]]],
+ [-77,[[-180,180]]],
+ [-80,[[-180,180]]],
+ [-83,[[-180,180]]],
+ [-86,[[-180,180]]],
+];
+const GLOBE_R = 10;
+const GLOBE_PINS = () => FESTIVALS.filter(f => f.globe !== false);
+const ll2v = (lat,lon,r)=>{
+  const a = lat*DEG, b = lon*DEG, ca = Math.cos(a);
+  return [ r*ca*Math.sin(b), r*Math.sin(a), r*ca*Math.cos(b) ];
+};
+function buildGlobeMeshes(){
+  /* ocean */
+  { const b = mb();
+    b.C('#7fc9e8', MAT.TINT).sphere(GLOBE_R, 64, 40);
+    RD.addMesh('globe_sea', b.build('globe_sea'));
+  }
+  /* land tiles, raised slightly off the ocean shell */
+  { const b = mb();
+    const R = GLOBE_R*1.006, S = GLOBE_STEP;
+    for(const [lat, ranges] of GLOBE_LAND){
+      for(const [l0,l1] of ranges){
+        for(let lon=l0; lon<l1; lon+=S){
+          const lo2 = Math.min(lon+S, l1);
+          const la0 = lat-S/2, la1 = lat+S/2;
+          /* polar caps and hot deserts get their own tint */
+          const abs = Math.abs(lat);
+          let col = '#a9dd9a';
+          if(abs > 62) col = '#f2f7fb';
+          else if(abs > 52) col = '#cfe6c4';
+          else if(abs < 32 && abs > 12) col = '#e8dcae';
+          else if(abs <= 12) col = '#8ecf8a';
+          b.C(col, MAT.FIXED);
+          const p00=ll2v(la0,lon,R), p10=ll2v(la0,lo2,R), p11=ll2v(la1,lo2,R), p01=ll2v(la1,lon,R);
+          const nrm = ll2v(lat,(lon+lo2)/2,1);
+          const i0=b.vert(p00[0],p00[1],p00[2], nrm[0],nrm[1],nrm[2], 0,0);
+          const i1=b.vert(p10[0],p10[1],p10[2], nrm[0],nrm[1],nrm[2], 1,0);
+          const i2=b.vert(p11[0],p11[1],p11[2], nrm[0],nrm[1],nrm[2], 1,1);
+          const i3=b.vert(p01[0],p01[1],p01[2], nrm[0],nrm[1],nrm[2], 0,1);
+          b.quad(i0,i1,i2,i3);
+        }
+      }
+    }
+    RD.addMesh('globe_land', b.build('globe_land'));
+  }
+  /* latitude / longitude wires */
+  { const b = mb();
+    b.C('#ffffff', MAT.EMIT);
+    const R = GLOBE_R*1.012, t = 0.012*GLOBE_R;
+    for(const lat of [-60,-30,0,30,60]){
+      const seg=72, rr=R*Math.cos(lat*DEG), y=R*Math.sin(lat*DEG);
+      const base=b.vcount;
+      for(let i=0;i<=seg;i++){ const a=i/seg*TAU;
+        b.vert(Math.cos(a)*rr, y+t, Math.sin(a)*rr, 0,1,0, i/seg,0);
+        b.vert(Math.cos(a)*rr, y-t, Math.sin(a)*rr, 0,1,0, i/seg,1); }
+      for(let i=0;i<seg;i++){ const a=base+i*2; b.i.push(a,a+2,a+3, a,a+3,a+1); b.i.push(a,a+3,a+2, a,a+1,a+3); }
+    }
+    RD.addMesh('globe_grid', b.build('globe_grid'));
+  }
+  /* location marker: teardrop pin */
+  { const b = mb();
+    b.C('#ffffff', MAT.TINT);
+    b.push().T(0,0.92,0).S(1,1.05,1).sphere(0.42,12,9).pop();
+    b.push().T(0,0.06,0).cyl(0.03,0.30,0.82,9).pop();
+    b.C('#ffffff', MAT.FIXED).push().T(0,0.96,0).S(1,1,1).sphere(0.17,10,7).pop();
+    RD.addMesh('globe_pin', b.build('globe_pin'));
+  }
+  /* halo ring drawn under an active pin */
+  { const b = mb();
+    b.C('#ffffff', MAT.EMIT).RX(PI/2).torus(0.62,0.055,20,7);
+    RD.addMesh('globe_ring', b.build('globe_ring'));
+  }
+}
+
+const GLOBE = {
+  active:false, spin:0, tilt:0.34, dist:26, targetDist:26,
+  hover:null, picked:null, zoom:0, zooming:false, onPick:null,
+  labels:[], labelRoot:null, dragging:false, lastX:0, vel:0.055,
+  start(onPick){
+    this.active = true; this.onPick = onPick;
+    this.baseSpin = -(FESTIVALS[0].lon*DEG);   /* Busan dead centre */
+    this.spin = this.baseSpin; this.swayT = 0; this.free = false;
+    this.tilt = 0.30; this.dist = 46; this.targetDist = 25.5;
+    this.zoom = 0; this.zooming = false; this.picked = null;
+    if(!this.labelRoot){
+      this.labelRoot = el('div',{style:{position:'fixed',inset:'0',zIndex:'205',pointerEvents:'none'}});
+      document.body.appendChild(this.labelRoot);
+    }
+    this.labelRoot.style.display = 'block';
+    this.buildLabels();
+    this.attach();
+    if(!document.getElementById('globehint')){
+      document.body.appendChild(el('div',{id:'globehint',html:
+        '<span>🖱 '+T('드래그로 지구본 회전','Drag to spin')+'</span>'
+       +'<span>🔍 '+T('휠로 확대','Wheel to zoom')+'</span>'
+       +'<span>📍 '+T('핀을 클릭해 축제 선택','Click a pin to choose')+'</span>'}));
+    }
+  },
+  stop(){
+    if(!this.active) return;
+    this.active = false;
+    if(CAM.mode === 'globe') CAM.mode = 'overview';
+    if(this.labelRoot) this.labelRoot.style.display = 'none';
+    this.detach();
+    const h = document.getElementById('globehint'); if(h) h.remove();
+  },
+  attach(){
+    if(this._on) return;
+    this._on = {
+      down: e=>{ if(e.button!==0) return; this.dragging=true; this.lastX=e.clientX; this.lastY=e.clientY; this.moved=0; },
+      move: e=>{
+        if(!this.dragging || this.zooming) return;
+        const dx=e.clientX-this.lastX, dy=e.clientY-this.lastY;
+        this.moved += Math.abs(dx)+Math.abs(dy);
+        this.free = true;
+        this.spin -= dx*0.0055;
+        this.tilt = clamp(this.tilt + dy*0.0042, -1.15, 1.15);
+        this.lastX=e.clientX; this.lastY=e.clientY;
+      },
+      up: e=>{
+        if(this.dragging && this.moved < 5) this.clickAt(e.clientX, e.clientY);
+        this.dragging=false;
+      },
+      wheel: e=>{ if(this.zooming) return;
+        this.targetDist = clamp(this.targetDist*(1+Math.sign(e.deltaY)*0.11), 15, 42); e.preventDefault(); }
+    };
+    CV.addEventListener('mousedown', this._on.down);
+    addEventListener('mousemove', this._on.move);
+    addEventListener('mouseup', this._on.up);
+    CV.addEventListener('wheel', this._on.wheel, {passive:false});
+  },
+  detach(){
+    if(!this._on) return;
+    CV.removeEventListener('mousedown', this._on.down);
+    removeEventListener('mousemove', this._on.move);
+    removeEventListener('mouseup', this._on.up);
+    CV.removeEventListener('wheel', this._on.wheel);
+    this._on = null; this.dragging = false;
+  },
+  /* click the 3-D pin itself, not just its label */
+  clickAt(sx, sy){
+    let best=null, bestD=44*44;
+    for(const f of GLOBE_PINS()){
+      const p = this.posOf(f.lat, f.lon, GLOBE_R*1.004);
+      if(p[0]*CAM.eye[0] + p[1]*CAM.eye[1] + p[2]*CAM.eye[2] <= GLOBE_R*GLOBE_R*0.14) continue;
+      const q = CAM.projectToScreen(p[0], p[1]+0.9, p[2]);
+      if(!q) continue;
+      const d = (q.x-sx)*(q.x-sx) + (q.y-sy)*(q.y-sy);
+      if(d < bestD){ bestD=d; best=f; }
+    }
+    if(best) this.pick(best);
+  },
+  buildLabels(){
+    this.labelRoot.innerHTML = '';
+    this.labels = GLOBE_PINS().map(f=>{
+      const n = el('button',{class:'globe-label'+(f.open?' open':' locked'),
+        style:{position:'absolute',pointerEvents:'auto'},
+        onclick:()=>this.pick(f)});
+      n.innerHTML = '<i></i><b>'+(LANG==='ko'?f.ko:f.en)+'</b>'
+        + (f.open ? '<span class="go">▶ '+T('플레이 가능','Playable')+'</span>'
+                  : '<span class="lk">🔒 '+T('준비 중','Coming soon')+'</span>');
+      this.labelRoot.appendChild(n);
+      return { f, n };
+    });
+  },
+  pick(f){
+    if(this.zooming) return;
+    if(!f.open){
+      AUDIO.sfx('error');
+      FX.pushToast('🔒 '+(LANG==='ko'?f.ko:f.en)+' — '+T('준비 중입니다','Coming soon'),'warn');
+      return;
+    }
+    AUDIO.sfx('open');
+    this.picked = f; this.zooming = true;
+  },
+  update(dt){
+    if(!this.active) return;
+    if(this.zooming){
+      this.zoom = Math.min(1, this.zoom + dt*0.62);
+      const f = this.picked;
+      /* swing the target longitude to face camera while diving in */
+      const want = -(f.lon*DEG) - 0.0;
+      this.spin = angLerp(this.spin, want, 1-Math.exp(-3.4*dt));
+      this.tilt = damp(this.tilt, f.lat*DEG*0.85, 3.4, dt);
+      this.targetDist = lerp(25.5, 10.9, smootherstep(0,1,this.zoom));
+      if(this.zoom >= 1 && this.onPick){ const cb=this.onPick; this.onPick=null; cb(this.picked); }
+    } else if(!this.dragging){
+      if(this.free) this.spin += dt*this.vel;
+      else { this.swayT += dt; this.spin = this.baseSpin + Math.sin(this.swayT*0.17)*0.52; }
+    }
+    this.dist = damp(this.dist, this.targetDist, 3.2, dt);
+    /* camera sits on +Z looking at the origin; the globe spins under it */
+    const ox = (innerWidth > 860) ? -GLOBE_R*0.40*(1-this.zoom) : 0;
+    CAM.eye[0] = ox; CAM.eye[1] = Math.sin(this.tilt)*this.dist; CAM.eye[2] = Math.cos(this.tilt)*this.dist;
+    CAM.tgt[0] = ox; CAM.tgt[1] = 0; CAM.tgt[2] = 0;
+    CAM.fov = 42;
+  },
+  /* world position of a lat/lon after the current spin */
+  posOf(lat,lon,r){
+    const p = ll2v(lat, lon, r===undefined?GLOBE_R:r);
+    const c = Math.cos(this.spin), s = Math.sin(this.spin);
+    return [ p[0]*c + p[2]*s, p[1], -p[0]*s + p[2]*c ];
+  },
+  draw(dt){
+    if(!this.active) return;
+    M4.trsY(TMP, 0,0,0, this.spin, 1,1,1);
+    RD.mNC('globe_sea', TMP, 0.50,0.79,0.91, 0.06, 0.85, 1, 0, 0);
+    RD.mNC('globe_land', TMP, 1,1,1, 0, 0.6, 1, 0, 0);
+    RD.mNC('globe_grid', TMP, 0.62,0.82,1.0, 0.30, 0.5, 1, 0, 0);
+    for(const f of GLOBE_PINS()){
+      const up = ll2v(f.lat, f.lon, 1);
+      const p  = this.posOf(f.lat, f.lon, GLOBE_R*1.004);
+      /* orient the pin along the surface normal */
+      const n  = this.posOf(f.lat, f.lon, 1);
+      const yaw = Math.atan2(n[0], n[2]);
+      const pitch = Math.asin(clamp(n[1],-1,1));
+      const s = f.open ? 1.15 : 0.85;
+      M4.trs(TMP2, p[0],p[1],p[2], -(pitch-PI/2)-PI/2, yaw, 0, s,s,s);
+      const col = f.open ? [1.0,0.42,0.36] : [0.62,0.68,0.76];
+      const em  = f.open ? (1.6 + Math.sin(RD.time*3.4)*0.7) : 0.12;
+      RD.mNC('globe_pin', TMP2, col[0],col[1],col[2], em, 0.5,1,0, 0);
+      if(f.open){
+        const pulse = 1 + (RD.time*0.8 % 1)*1.5;
+        M4.trs(TMP2, p[0],p[1],p[2], -(pitch-PI/2)-PI/2, yaw, 0, pulse,pulse,pulse);
+        RD.mNC('globe_ring', TMP2, 1.0,0.5,0.4, 1.8*(1-(RD.time*0.8 % 1)), 0.5,1,0, 0);
+        if(Math.random() < dt*8) FX.sparkle(p[0],p[1],p[2],'#ff8f6b',1);
+      }
+    }
+    this.updateLabels();
+  },
+  updateLabels(){
+    const fade = 1-this.zoom;
+    for(const {f,n} of this.labels){
+      const p = this.posOf(f.lat, f.lon, GLOBE_R*1.004);
+      const sp = CAM.projectToScreen(p[0], p[1]+1.5, p[2]);
+      /* hide labels on the far side of the globe */
+      const facing = (p[2]*CAM.eye[2] + p[1]*CAM.eye[1] + p[0]*CAM.eye[0]) > GLOBE_R*GLOBE_R*0.14;
+      if(!sp || !facing || fade < 0.25){ n.style.display='none'; continue; }
+      n.style.display = 'block';
+      n.style.left = sp.x+'px';
+      n.style.top  = sp.y+'px';
+      n.style.opacity = fade;
+    }
+  }
+};
+
+/* ===========================================================================
    39. TITLE SCREEN + FESTIVAL ATLAS
    =========================================================================== */
 const FESTIVALS = [
-  { id:'busan', ko:'부산 바다축제', en:'Busan Sea Festival', x:71, y:41, open:true,
+  { id:'busan', ko:'부산 바다축제', en:'Busan Sea Festival', x:71, y:41, lat:35.04, lon:128.97, open:true,
     ko2:'다대포 해수욕장 · 3일 운영', en2:'Dadaepo Beach · 3 operating days' },
-  { id:'jinju', ko:'진주 남강유등축제', en:'Jinju Lantern Festival', x:66, y:44, open:false },
-  { id:'boryeong', ko:'보령 머드축제', en:'Boryeong Mud Festival', x:58, y:33, open:false },
-  { id:'sapporo', ko:'삿포로 눈축제', en:'Sapporo Snow Festival', x:88, y:14, open:false },
-  { id:'rio', ko:'리우 카니발', en:'Rio Carnival', x:22, y:74, open:false },
-  { id:'munich', ko:'옥토버페스트', en:'Oktoberfest', x:35, y:26, open:false },
+  { id:'boryeong', ko:'보령 머드축제', en:'Boryeong Mud Festival', x:58, y:33, lat:36.33, lon:126.51, open:false, globe:false },
+  { id:'sapporo', ko:'삿포로 눈축제', en:'Sapporo Snow Festival', x:88, y:14, lat:43.06, lon:141.35, open:false },
+  { id:'munich', ko:'옥토버페스트', en:'Oktoberfest', x:35, y:26, lat:48.14, lon:11.58, open:false },
+  { id:'venice', ko:'베네치아 카니발', en:'Venice Carnival', x:38, y:28, lat:45.44, lon:12.34, open:false },
+  { id:'edinburgh', ko:'에든버러 프린지', en:'Edinburgh Fringe', x:32, y:20, lat:55.95, lon:-3.19, open:false },
+  { id:'rio', ko:'리우 카니발', en:'Rio Carnival', x:22, y:74, lat:-22.91, lon:-43.17, open:false },
+  { id:'neworleans', ko:'뉴올리언스 마디그라', en:'New Orleans Mardi Gras', x:17, y:36, lat:29.95, lon:-90.07, open:false },
+  { id:'sydney', ko:'비비드 시드니', en:'Vivid Sydney', x:92, y:80, lat:-33.87, lon:151.21, open:false },
 ];
 function showTitle(){
   UI.modalOpen = false;
@@ -8539,15 +8896,16 @@ function showTitle(){
   SCENE.hide();
   RD.heatMode = -1;
   document.body.classList.remove('ground-active');
-  /* prepare a showcase world */
-  buildShowcase();
+  /* the start screen is the globe; the festival world is only built on entry */
+  W.reset(20260801);
   W.stage = 'title';
   ATMO.weather = 'clear';
+  GLOBE.start(f=>{ hideTitle(); startNewGame(); });
   CAM.mode = 'title';
   AUDIO.setScene('menu');
   AUDIO.setCrowd(0.35);
   const old = $('#title'); if(old) old.remove();
-  const t = el('div',{id:'title'});
+  const t = el('div',{id:'title',class:'globe-mode'});
   t.appendChild(el('div',{class:'langtoggle'},
     el('button',{class:'btn sm'+(LANG==='ko'?' pri':''),text:'한국어',onclick:()=>{ if(LANG!=='ko'){ LANG='ko'; localStorage.setItem('ff_lang','ko'); showTitle(); } }}),
     el('button',{class:'btn sm'+(LANG==='en'?' pri':''),text:'English',onclick:()=>{ if(LANG!=='en'){ LANG='en'; localStorage.setItem('ff_lang','en'); showTitle(); } }})));
@@ -8557,16 +8915,16 @@ function showTitle(){
   inner.appendChild(el('div',{class:'sub',text:'Festival Management Simulator'}));
   inner.appendChild(el('div',{class:'kr',text:LANG==='ko'?'부산 바다축제 · 다대포':'Busan Sea Festival · Dadaepo'}));
   inner.appendChild(el('div',{class:'blurb',html:
-    T('축제 공간과 운영을 설계하고, 스스로 움직이는 군중을 관찰하고, 사건에 개입해 3일을 완주하세요.<br>마지막 밤, 당신이 벌어들인 만큼 불꽃이 터집니다.',
-      'Design the space and the operation, watch an autonomous crowd react, intervene when it breaks,<br>and finish all three days. On the last night, the fireworks are exactly as big as you earned.')}));
+    T('지구본에서 축제를 고르세요. 지금은 <b style="color:#ff9f8c">부산 바다축제</b>만 열려 있습니다.<br>축제 공간과 운영을 설계하고, 군중을 관찰하고, 3일을 완주하세요.',
+      'Pick a festival on the globe. Only the <b style="color:#ff9f8c">Busan Sea Festival</b> is open so far.<br>Design the space, watch the crowd react, and finish all three days.')}));
   const menu = el('div',{class:'menu'});
   const gems = metaGems();
   const best = loadBest();
   if(hasSave()) menu.appendChild(el('button',{class:'btn lg pri',html:'▶ '+T('이어하기','Continue'),
     onclick:()=>{ hideTitle(); if(!loadGame()) startNewGame(); }}));
-  menu.appendChild(el('button',{class:'btn lg'+(hasSave()?'':' pri'),html:'🎪 '+T('새 축제 시작','New Festival'),
-    onclick:()=>{ hideTitle(); startNewGame(); }}));
-  menu.appendChild(el('button',{class:'btn lg',html:'🗺️ '+T('페스티벌 아틀라스','Festival Atlas'),onclick:()=>openAtlas()}));
+  menu.appendChild(el('button',{class:'btn lg'+(hasSave()?'':' pri'),html:'🎪 '+T('부산 바다축제 시작','Start Busan Sea Festival'),
+    onclick:()=>GLOBE.pick(FESTIVALS[0])}));
+  menu.appendChild(el('button',{class:'btn lg',html:'🗺️ '+T('축제 목록 보기','Festival list'),onclick:()=>openAtlas()}));
   menu.appendChild(el('button',{class:'btn',html:'❓ '+T('플레이 가이드','How to Play'),onclick:()=>{ $('#ui').classList.remove('hide'); UI.openHelp(); }}));
   menu.appendChild(el('button',{class:'btn',html:'⚙ '+T('설정','Settings'),onclick:()=>{ $('#ui').classList.remove('hide'); UI.openSettings(); }}));
   inner.appendChild(menu);
@@ -8579,42 +8937,15 @@ function showTitle(){
       'WebGL2 · single HTML file · zero external assets &nbsp;|&nbsp; prototype built to the design document')
     + '<br>' + T('마우스 우클릭 드래그로 회전, 휠로 줌','Right-drag to orbit, wheel to zoom')}));
   document.body.appendChild(t);
-  /* slow orbit — low angle so the sunset horizon is in frame */
-  CAM.ttx = 0; CAM.ttz = 0; CAM.tx = 0; CAM.tz = 0;
-  CAM.tdist = 74; CAM.dist = 92; CAM.tpitch = 0.30; CAM.pitch = 0.34;
-  CAM.tyaw = CAM.yaw = 0.35;
+  CAM.mode = 'globe';
   W.clock = 1164;
 }
 function hideTitle(){
+  GLOBE.stop();
   const t = $('#title');
   if(t){ t.classList.add('out'); setTimeout(()=>t.remove(), 820); }
   $('#ui').classList.remove('hide');
   AUDIO.init(); AUDIO.resume();
-}
-function buildShowcase(){
-  W.reset(20260801);
-  const R = makeRNG(991);
-  const demo = [
-    ['pocha',20,9,0],['bingsu',24,9,0],['goods',20,13,0],['restroom',27,12,0],
-    ['craftbooth',11,10,0],['smallstage',6,13,0],['photo',13,14,0],['water',24,13,0],
-    ['shade',9,15,0],['bench',22,15,0],['friedtruck',26,6,0],['coffee',19,6,0],
-    ['info',13,4,0],['firstaid',10,6,0],['lamp',19,11,0],['lamp',25,11,0],
-    ['surfschool',20,18,0],['wellness',5,17,0],['beer',28,9,0],['trash',18,10,0],
-  ];
-  for(const [id,c,r,rot] of demo) placeFacility(id, c, r, rot, true);
-  NAV.rebuildStatic();
-  /* ambient crowd */
-  for(let i=0;i<150;i++){
-    const n = spawnNPC();
-    if(!n) break;
-    n.x = R.range(-46,46); n.z = R.range(-28,24);
-    const f = NAV.nearestFree(n.x,n.z,8);
-    if(f){ n.x = NAV.cx(f[0]); n.z = NAV.cz(f[1]); }
-    n.state = ST.SELECT; n.dwell = 1e9; n.age = 0;
-  }
-  W.gold = BAL.startGold;
-  W.ledger.length = 0; W.dayLedger.length = 0; W.causeTally.clear();
-  W.revenueToday = 0; W.expenseToday = 0; W.visitorsToday = 0; W.visitorsTotal = 0;
 }
 function openAtlas(){
   $('#ui').classList.remove('hide');
@@ -8660,6 +8991,7 @@ function openAtlas(){
   });
 }
 function startNewGame(){
+  GLOBE.stop();
   W.reset();
   FX.clear();
   BUILD.mode = null; BUILD.selected = null;
@@ -8888,21 +9220,20 @@ function frame(now){
       sdt -= s;
     }
   } else if(W.stage === 'title'){
-    /* keep the showcase crowd alive */
-    updateNPCs(Math.min(dt, 0.05));
-    HEAT.decay(dt);
-    CAM.tyaw += dt*0.045;
+    GLOBE.update(dt);
   } else if(FINALE.active){
     updateNPCs(Math.min(dt, 0.05));
   }
   tickSlow(dt);
 
   /* ---- atmosphere ---- */
-  ATMO.update(W.stage==='title' ? 19.4 : (W.stage==='finale' ? 22.0 : W.clock/60));
+  ATMO.update(W.stage==='title' ? 0.4 : (W.stage==='finale' ? 22.0 : W.clock/60));
+  if(GLOBE.active){ ATMO.dir[0]=0.46; ATMO.dir[1]=0.36; ATMO.dir[2]=0.81;
+    ATMO.sunCol=[1.35,1.30,1.18]; ATMO.fogDen=0.0; }
 
   /* ---- camera & interaction ---- */
-  if(!MINI.active && CAM.mode !== 'cine') CAM.update(dt);
-  else if(CAM.mode === 'cine') CAM.update(dt);
+  if(CAM.mode === 'globe'){ /* GLOBE.update already drove the camera */ }
+  else if(!MINI.active || CAM.mode === 'cine') CAM.update(dt);
   if(!MINI.active && !FINALE.active && W.stage !== 'title'){
     BUILD.update();
     GROUND.update(dt);
@@ -8918,7 +9249,9 @@ function frame(now){
   CAM.apply();
   RD.begin(dt);
   RD.heatArea = HEAT.area;
-  if(MINI.active){
+  if(GLOBE.active){
+    GLOBE.draw(dt);
+  } else if(MINI.active){
     MINI.draw(dt);
     M4.trsY(TMP, 0,0,0, 0, 1,1,1);
     RD.mNC('terrain', TMP, 1,1,1, 0, 0.9,1,0,0);
@@ -8928,7 +9261,8 @@ function frame(now){
   FX.draw();
   RD.flash = damp(RD.flash, 0, 5.5, dt);
   RD.render({
-    exposure: MINI.active ? 1.08 : undefined,
+    noWater: GLOBE.active,
+    exposure: GLOBE.active ? 1.30 : (MINI.active ? 1.08 : undefined),
     bloomMul: FINALE.active ? 1.5 : 1,
     sat: FINALE.active ? 1.24 : 1.16
   });
