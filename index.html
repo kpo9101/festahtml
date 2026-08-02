@@ -80,7 +80,12 @@ input,select,textarea{font:inherit;color:inherit}
 
 /* ============================================================ UI ROOT */
 #ui{position:fixed;inset:0;pointer-events:none;z-index:10;display:flex;flex-direction:column}
-#ui > *{pointer-events:auto}
+/* Only real panels capture the mouse. #stagearea is a full-screen layout
+   container — if it captures, it swallows every click meant for the world. */
+#topbar,#legend{pointer-events:auto}
+#stagearea{pointer-events:none}
+#leftcol,#rightcol{pointer-events:none}
+#leftcol > *,#rightcol > *{pointer-events:auto}
 .no-pe{pointer-events:none !important}
 
 /* ============================================================ PANEL BASE */
