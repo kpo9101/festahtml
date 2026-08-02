@@ -35,7 +35,7 @@ Then visit `http://localhost:5173`.
 | Incidents | 12 event types with staff dispatch — staff physically walk from the Ops HQ and work the site. Mitigating facilities reduce resolve time |
 | Programs | Paid program cards slotted into program-capable facilities, with pre-purchase forecasts |
 | Modes | Overview (RTS camera) and Ground (first-person, pointer-lock) — **Ground is strictly optional and carries no penalty** |
-| Minigame | 다대포 서핑 — 52 s wave run with a steering-vs-balance tension |
+| Minigames | Three, one per host facility — 다대포 서핑 (steering vs balance), 불꽃 타이밍 (rhythm/timing), 포차 러시 (order matching). Once per game per day; rewards normalised against a perfect-run reference |
 | Finale | 5 purchase tiers driving a 96 s cinematic with up to 140 procedural fireworks shells |
 | Audio | Entirely synthesised via WebAudio — an upbeat festival score that shifts by scene, plus sea, crowd and SFX |
 | Accessibility | Colour-blind palettes, pattern overlays on all heat maps, high-contrast UI, reduced-motion, UI scaling, full KO/EN localisation |
@@ -56,6 +56,8 @@ Then visit `http://localhost:5173`.
 | `Space` | Pause |
 | `C` / `0` | Cycle / clear heat-map overlay |
 | `E` / `F` | Interact / photo mode (Ground) |
+| `G` | Minigame picker |
+| `1`–`4` | Stations (Pocha Rush) · `Space` detonate (Fireworks) |
 | `L` `H` `Esc` | Language / help / cancel–settings |
 
 ---

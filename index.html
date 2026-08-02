@@ -2634,7 +2634,7 @@ function defFac(o){ FAC[o.id] = o; return o; }
 /* --- fixed (pre-placed, not purchasable) --- */
 defFac({ id:'mainstage', ko:'메인 무대', en:'Main Stage', cat:'fixed', g:'🎤',
   cost:0, w:6, h:4, cap:400, service:0, queueMax:0, rev:0, sat:8, attraction:34,
-  needs:['fun'], upkeep:0, fixed:true, mesh:'mainstage', color:'#83a4dc',
+  needs:['fun'], upkeep:0, fixed:true, mesh:'mainstage', color:'#83a4dc', minigame:'fireworks',
   desc:{ko:'축제의 심장. 19:40 메인 공연이 고정 편성된다.', en:'Heart of the festival. The 19:40 main show is fixed here.'},
   progSlots:0, noQueue:true });
 defFac({ id:'gate', ko:'메인 게이트', en:'Main Gate', cat:'fixed', g:'🎪',
@@ -2649,7 +2649,7 @@ defFac({ id:'hq', ko:'운영본부', en:'Operations HQ', cat:'fixed', g:'🏢',
 /* --- food & drink --- */
 defFac({ id:'pocha', ko:'해산물 포차', en:'Seafood Pocha', cat:'food', g:'🦐',
   cost:750, w:2, h:2, cap:2, service:3.4, queueMax:12, rev:26, sat:9, attraction:16,
-  needs:['hunger'], upkeep:60, mesh:'booth_food', color:'#f6a595',
+  needs:['hunger'], upkeep:60, mesh:'booth_food', color:'#f6a595', minigame:'pocha',
   desc:{ko:'부산 대표 먹거리. 매출이 크지만 줄이 길어진다.', en:'Busan signature eats. High revenue, long queues.'} });
 defFac({ id:'bingsu', ko:'빙수 카페', en:'Bingsu Cafe', cat:'food', g:'🍧',
   cost:520, w:2, h:1, cap:2, service:2.6, queueMax:10, rev:17, sat:8, attraction:13,
@@ -3876,6 +3876,15 @@ function buildCharMeshes(){
   { const b = mb();
     b.C('#ffd166', MAT.EMIT).RX(PI/2).torus(0.55,0.13,14,7);
     RD.addMesh('ring', b.build('ring'));
+  }
+  /* --- minigame cooking station --- */
+  { const b = mb();
+    b.C('#e8eef4', MAT.FIXED).push().T(0,0.30,0).box(1.05,0.60,0.85,{bottom:false}).pop();
+    b.C('#c8d2dc', MAT.FIXED).push().T(0,0.62,0).box(1.15,0.06,0.95).pop();
+    b.C('#ffffff', MAT.TINT).push().T(0,0.72,0).cyl(0.34,0.30,0.18,12).pop();
+    b.C('#ffffff', MAT.EMIT).push().T(0,0.91,0).cyl(0.31,0.31,0.03,12).pop();
+    b.C('#ffffff', MAT.TINT).push().T(0,1.24,0).S(1,0.55,1).sphere(0.26,12,7).pop();
+    RD.addMesh('mg_station', b.build('mg_station'));
   }
   /* --- event marker beacon --- */
   { const b = mb();
@@ -6945,7 +6954,10 @@ const UI = {
     if(d.progSlots) h += '<div class="row"><span>'+T('프로그램 슬롯','Program slots')+'</span><b>'+d.progSlots+'</b></div>';
     if(d.needs && d.needs.length) h += '<div class="row"><span>'+T('충족 욕구','Satisfies')+'</span><b>'+d.needs.map(n=>NEEDLBL(n)).join(', ')+'</b></div>';
     if(d.beachOnly) h += '<div class="warnline">🏖️ '+T('해변 구역에만 설치 가능','Beach zone only')+'</div>';
-    if(d.minigame) h += '<div class="okline">🎮 '+T('미니게임을 직접 플레이할 수 있습니다','You can personally play a minigame here')+'</div>';
+    if(d.minigame && MINIGAME_BY[d.minigame]){
+      const g = MINIGAME_BY[d.minigame];
+      h += '<div class="okline">'+g.g+' '+T('미니게임','Minigame')+': <b>'+(LANG==='ko'?g.ko:g.en)+'</b></div>';
+    }
     if(!W.canAfford(d.cost)) h += '<div class="warnline">⛔ '+reasonText('NO_GOLD')+'</div>';
     return h;
   },
@@ -7043,9 +7055,14 @@ const UI = {
       }
     }
     if(d.minigame && W.stage==='live'){
-      ins.appendChild(el('button',{class:'btn gold wide',style:{marginTop:'8px'},
-        html:'🏄 '+T('미니게임 플레이','Play minigame'),
-        onclick:()=>MINI.start('surf', f)}));
+      const g = MINIGAME_BY[d.minigame];
+      const st = minigameStatus(g);
+      const btn = el('button',{class:'btn gold wide',style:{marginTop:'8px'},
+        html:g.g+' '+(LANG==='ko'?g.ko:g.en),
+        onclick:()=>MINI.start(d.minigame, f)});
+      btn.disabled = !st.ok;
+      this.tip(btn, ()=> st.ok ? (LANG==='ko'?g.desc.ko:g.desc.en) : st.why);
+      ins.appendChild(btn);
     }
     if(!d.fixed && BUILD.canBuild()){
       ins.appendChild(el('button',{class:'btn sm wide ghost',style:{marginTop:'8px'},
@@ -7115,6 +7132,10 @@ Object.assign(UI, {
       const pb = el('button',{class:'btn sm', id:'pausebtn', html: W.paused?('▶ '+T('재개','Resume')):('⏸ '+T('일시정지','Pause')),
         onclick:()=>{ this.setSpeed(W.paused?1:0); this.buildDock(); }});
       d.appendChild(pb);
+      const mg = el('button',{class:'btn sm gold', html:'🎮 '+T('미니게임','Minigames'),
+        onclick:()=>UI.openMinigamePicker()});
+      this.tip(mg, T('축제 미니게임 3종 — 하루에 게임당 한 번','Three festival minigames — once per day each'));
+      d.appendChild(mg);
       const info = el('div',{class:'res',id:'liveinfo',style:{fontSize:'.82em'}},
         el('span',{class:'ico',text:'☗'}), el('b',{id:'crowdcount',text:'0'}),
         el('small',{text:T('현장','on site')}));
@@ -8010,6 +8031,49 @@ Object.assign(UI, {
     });
   },
 
+  openMinigamePicker(){
+    const render = (b)=>{
+      b.innerHTML='';
+      b.appendChild(el('div',{class:'infobox',html:
+        T('미니게임은 <b>하루에 게임당 한 번</b>씩 즐길 수 있습니다. 진행하는 동안에도 축제 시간은 계속 흐릅니다.',
+          'Each game can be played <b>once per day</b>. Festival time keeps running while you play.')}));
+      const g3 = el('div',{class:'grid3',style:{marginTop:'14px'}});
+      for(const g of MINIGAMES){
+        const st = minigameStatus(g);
+        const best = W.minigameBest;
+        const c = el('button',{class:'card pick'+(st.ok?'':' dis'),
+          onclick:()=>{ if(!st.ok){ AUDIO.sfx('error'); FX.pushToast('⛔ '+st.why,'err'); return; }
+                        this.closeModal(); MINI.start(g.id); }},
+          el('h4',{}, el('span',{text:g.g}), el('span',{text:LANG==='ko'?g.ko:g.en})),
+          el('p',{class:'desc',text:LANG==='ko'?g.desc.ko:g.desc.en}),
+          el('div',{class:'kv'}, el('span',{text:T('필요 시설','Requires')}),
+            el('b',{text: FAC[g.fac]?facName(FAC[g.fac]):g.fac})),
+          el('div',{class:'kv'}, el('span',{text:T('길이','Length')}), el('b',{text:g.dur+'s'})),
+          el('div',{class:'kv'}, el('span',{text:T('조작','Controls')}), el('b',{html:LANG==='ko'?g.keys.ko:g.keys.en})));
+        if(!st.ok) c.appendChild(el('div',{style:{marginTop:'8px'},
+          html:'<span class="tag warn">⛔ '+st.why+'</span>'}));
+        else c.appendChild(el('div',{style:{marginTop:'8px'},
+          html:'<span class="tag ok">▶ '+T('플레이 가능','Ready')+'</span>'}));
+        g3.appendChild(c);
+      }
+      b.appendChild(g3);
+      b.appendChild(el('div',{class:'repgrid',style:{marginTop:'16px'}},
+        el('div',{class:'repcard'}, el('div',{class:'rl',text:T('최고 점수','Best score')}),
+          el('div',{class:'rv',style:{color:'var(--gold)'},text:fmtInt(W.minigameBest)}))));
+    };
+    this.modal({
+      g:'🎮', title:T('미니게임','Minigames'),
+      sub:T('축제 정체성을 담은 세 가지 콘텐츠. 성과는 골드·버즈·만족도로 돌아옵니다.',
+            'Three games rooted in the festival itself. Results pay back in gold, buzz and satisfaction.'),
+      wide:true,
+      build:(b,f)=>{
+        render(b);
+        f.appendChild(this.sp());
+        f.appendChild(el('button',{class:'btn pri',text:T('닫기','Close'),onclick:()=>this.closeModal()}));
+      }
+    });
+  },
+
   openHelp(){
     this.modal({
       g:'❓', title:T('플레이 가이드','How to Play'), wide:true,
@@ -8044,6 +8108,18 @@ Object.assign(UI, {
         mk('<span class="kbd">1</span>–<span class="kbd">5</span> ('+T('히트맵','Heat map')+')', T('오버레이 전환','Switch overlay'));
         mk('<span class="kbd">Esc</span>', T('취소 / 설정','Cancel / settings'));
         b.appendChild(kb);
+        sec(T('미니게임','Minigames'));
+        const mgg = el('div',{class:'grid3'});
+        for(const g of MINIGAMES){
+          mgg.appendChild(el('div',{class:'card'},
+            el('h4',{}, el('span',{text:g.g}), el('span',{text:LANG==='ko'?g.ko:g.en})),
+            el('p',{class:'desc',text:LANG==='ko'?g.desc.ko:g.desc.en}),
+            el('div',{class:'kv'}, el('span',{text:T('필요 시설','Requires')}),
+              el('b',{text:FAC[g.fac]?facName(FAC[g.fac]):g.fac})),
+            el('div',{class:'kv'}, el('span',{text:T('조작','Controls')}), el('b',{html:LANG==='ko'?g.keys.ko:g.keys.en}))));
+        }
+        b.appendChild(mgg);
+
         sec(T('꼭 알아둘 것','Key rules'));
         const rules = el('div',{style:{display:'flex',flexDirection:'column',gap:'8px'}});
         [[T('시간은 Event UI에서도 멈추지 않습니다','Time does not stop for incident UI'), T('오직 개장 준비와 ESC에서만 시뮬레이션이 멈춥니다.','Only Morning Check and ESC pause the simulation.')],
@@ -8192,226 +8268,431 @@ const FINALE = {
 };
 
 /* ===========================================================================
-   35. MINIGAME — 다대포 서핑
+   35. MINIGAMES
+   Three separate festival games behind one controller. Each supplies its own
+   init/update/draw/hud; MINI owns the shared countdown, clock, scoring and
+   reward payout. The Live simulation keeps running underneath throughout,
+   per the design document's time policy.
    =========================================================================== */
+const MINIGAMES = [
+  {
+    id:'surf', ko:'다대포 서핑', en:'Dadaepo Surf', g:'🏄', fac:'surfschool',
+    dur:52, scene:'ocean', scoreRef:2100,
+    desc:{ ko:'파도를 타고 장애물을 피하며 링을 모읍니다. 방향을 틀수록 균형이 무너지니 욕심과 안정 사이를 재세요.',
+           en:'Ride the swell, dodge obstacles, collect rings. Every turn costs balance — weigh greed against staying upright.' },
+    keys:{ ko:'<span class="kbd">A</span><span class="kbd">D</span> 좌우 이동 · 균형',
+           en:'<span class="kbd">A</span><span class="kbd">D</span> steer &amp; balance' },
+    init(M){
+      M.x=-180; M.z=M.courseZ; M.speed=16; M.lane=0; M.tilt=0; M.tiltV=0;
+      M.wipe=0; M.obstacles=[]; M.pickups=[]; M.nextSpawn=0; M.rings=0; M.hits=0;
+    },
+    update(M,dt){
+      let steer=0;
+      if(IN.key('a')||IN.key('ArrowLeft')) steer-=1;
+      if(IN.key('d')||IN.key('ArrowRight')) steer+=1;
+      M.speed=Math.min(34,M.speed+dt*0.85);
+      M.lane=clamp(M.lane+steer*dt*11,-9.5,9.5);
+      M.tiltV+=steer*dt*2.6;
+      M.tiltV-=M.tilt*dt*3.4;
+      M.tiltV+=Math.sin(M.t*1.7)*dt*0.38;
+      M.tiltV+=Math.sin(M.t*0.61+1.3)*dt*0.22;
+      M.tiltV*=Math.exp(-dt*1.7);
+      M.tilt=clamp(M.tilt+M.tiltV*dt*2.4,-1.6,1.6);
+      M.x+=M.speed*dt; M.z=M.courseZ+M.lane;
+      M.score+=dt*M.speed*0.30*M.combo;
+      M.nextSpawn-=dt;
+      if(M.nextSpawn<=0){
+        M.nextSpawn=lerp(0.74,0.36,clamp01(M.t/M.dur))*M.rng.range(0.78,1.38);
+        const ahead=M.x+92;
+        if(M.rng.chance(0.52)) M.obstacles.push({x:ahead,l:M.rng.range(-9,9),kind:M.rng.int(0,2),hit:false});
+        else M.pickups.push({x:ahead,l:M.rng.range(-8.5,8.5),got:false,ph:M.rng.range(0,TAU)});
+      }
+      for(const o of M.obstacles){
+        if(o.hit||o.x<M.x-8) continue;
+        if(Math.abs(o.x-M.x)<1.5 && Math.abs(o.l-M.lane)<1.5){
+          o.hit=true; M.hits++; M.combo=1;
+          M.score=Math.max(0,M.score-30); M.speed=Math.max(11,M.speed*0.62);
+          M.tiltV+=(M.lane>o.l?1:-1)*1.9;
+          FX.camShake(0.5,0.4); FX.burst(M.x,M.z,'#ff5f6d',22,-0.2);
+          AUDIO.sfx('fail'); FX.floatWorld(M.x,M.z,'-30','#ff5f6d',2.4);
+        }
+      }
+      for(const q of M.pickups){
+        if(q.got||q.x<M.x-8) continue;
+        if(Math.abs(q.x-M.x)<1.7 && Math.abs(q.l-M.lane)<1.8){
+          q.got=true; M.rings++;
+          M.combo=Math.min(3,M.combo+0.25);
+          M.score+=22*M.combo;
+          AUDIO.sfx('point'); FX.sparkle(M.x,0.6,M.z,'#ffd166',14);
+          FX.floatWorld(M.x,M.z,'+'+Math.round(22*M.combo),'#ffd166',2.4);
+        }
+      }
+      const bal=$('#mgbal');
+      const danger=Math.abs(M.tilt)>0.92;
+      bal.classList.remove('hide');
+      bal.classList.toggle('danger',danger);
+      if(danger) M.wipe+=dt; else M.wipe=Math.max(0,M.wipe-dt*1.6);
+      if(M.wipe>0.75){
+        M.wipe=0; M.tilt=0; M.tiltV=0; M.combo=1;
+        M.score=Math.max(0,M.score-60); M.speed=12;
+        FX.camShake(0.85,0.6); FX.burst(M.x,M.z,'#7fe0ec',40,0.1);
+        AUDIO.sfx('splash'); FX.floatWorld(M.x,M.z,T('전복!','WIPEOUT!'),'#ff5f6d',3);
+      }
+      if(M.obstacles.length>40) M.obstacles.splice(0,12);
+      if(M.pickups.length>40) M.pickups.splice(0,12);
+      $('#mgneedle').style.left=(50+M.tilt*31)+'%';
+      $('#mgballab').textContent=danger?T('균형을 잡으세요!','REGAIN BALANCE!'):T('균형 · BALANCE','BALANCE');
+      if(Math.random()<dt*40){
+        FX.p(M.x-1.2,0.1,M.z+(Math.random()-0.5)*1.6,
+             -M.speed*0.25+(Math.random()-0.5)*3,1.2+Math.random()*2.4,(Math.random()-0.5)*3,
+             0.5,0.16,0.92,0.98,1,{grav:-7,drag:1.4,add:false,alpha:0.7});
+      }
+      const back=13,up=5.2;
+      CAM.eye[0]=damp(CAM.eye[0],M.x-back,8,dt);
+      CAM.eye[1]=damp(CAM.eye[1],up,6,dt);
+      CAM.eye[2]=damp(CAM.eye[2],M.z-M.lane*0.35,6,dt);
+      CAM.tgt[0]=M.x+9; CAM.tgt[1]=1.0; CAM.tgt[2]=M.z+M.lane*0.15;
+      CAM.fov=62+clamp01((M.speed-16)/20)*12;
+    },
+    draw(M,dt){
+      const tiltA=M.tilt*0.5, y=0.25+Math.sin(M.t*3.1)*0.10;
+      M4.trs(TMP,M.x,y,M.z,0,PI/2,tiltA,1.15,1.15,1.15);
+      RD.mNC('surfboard',TMP,0.96,0.98,1,0,0.8,1,0,0);
+      const hip=y+0.42, lean=(CH.neck-CH.hip);
+      M4.trs(TMP,M.x,hip,M.z,0,PI/2,tiltA*0.7,1,1,1);
+      RD.mNC('npc_body',TMP,0.81,0.94,1.0,0,0.5,1,0,0);
+      M4.trs(TMP,M.x-Math.sin(tiltA)*lean,hip+lean,M.z,0,PI/2,tiltA*0.7,1,1,1);
+      RD.mNC('npc_head',TMP,0.98,0.84,0.74,0,0.5,1,0,0);
+      RD.mNC('npc_hair',TMP,0.29,0.23,0.19,0,0.5,1,0,0);
+      RD.mNC('npc_cap',TMP,1.0,0.62,0.70,0,0.5,1,0,0);
+      RD.decal(M.x-3,M.z,3.4,1.3,0,1,1,1,0.34,2,0.1,0);
+      for(const o of M.obstacles){
+        if(o.x<M.x-14||o.x>M.x+110) continue;
+        const oz=M.courseZ+o.l, bob=Math.sin(RD.time*1.8+o.x*0.3)*0.14;
+        if(o.kind===0){ M4.trsY(TMP,o.x,-0.5+bob,oz,o.x,1.4,1.4,1.4);
+          RD.mNC('rock',TMP,o.hit?0.4:0.52,0.5,0.48,0,0.7,1,0,0); }
+        else if(o.kind===1){ M4.trsY(TMP,o.x,-0.35+bob,oz,RD.time*0.9,1.3,1.3,1.3);
+          RD.mNC('buoy',TMP,1,0.32,0.22,o.hit?0:0.5,0.6,1,0,0); }
+        else { M4.trsY(TMP,o.x,-0.15+bob,oz,RD.time*0.6,1.2,1.2,1.2);
+          RD.mNC('jelly',TMP,1,0.5,0.68,o.hit?0:0.9,0.5,1,0,0); }
+        if(!o.hit) RD.decal(o.x,oz,1.6,1.6,0,1,0.35,0.35,0.32,1,0.1,o.x);
+      }
+      for(const q of M.pickups){
+        if(q.got||q.x<M.x-14||q.x>M.x+110) continue;
+        const pz=M.courseZ+q.l;
+        M4.trs(TMP,q.x,0.85+Math.sin(RD.time*2.4+q.ph)*0.22,pz,0,RD.time*1.6,0,1,1,1);
+        RD.mNC('ring',TMP,1,0.82,0.4,2.2,0.5,1,0,0);
+        if(Math.random()<dt*6) FX.sparkle(q.x,0.9,pz,'#ffd166',1);
+      }
+    },
+    hud(M){
+      return '<div class="mg-stat"><div class="l">'+T('점수','Score')+'</div><div class="v" style="color:var(--gold)">'+Math.round(M.score)+'</div></div>'
+        +'<div class="mg-stat"><div class="l">'+T('콤보','Combo')+'</div><div class="v" style="color:var(--accent-2)">×'+M.combo.toFixed(1)+'</div></div>'
+        +'<div class="mg-stat"><div class="l">'+T('속도','Speed')+'</div><div class="v">'+Math.round(M.speed*3.6)+'</div></div>'
+        +'<div class="mg-stat"><div class="l">'+T('링','Rings')+'</div><div class="v">'+M.rings+'</div></div>';
+    }
+  },
+  {
+    id:'fireworks', ko:'불꽃 타이밍', en:'Fireworks Timing', g:'🎆', fac:'mainstage',
+    dur:48, scene:'festival', scoreRef:4700,
+    desc:{ ko:'무대에서 쏘아 올린 불꽃을 정점에서 터뜨립니다. 축소되는 링이 중앙에 겹치는 순간 스페이스를 누르세요.',
+           en:'Detonate each shell at its apex. Hit space the instant the shrinking ring meets the core.' },
+    keys:{ ko:'<span class="kbd">Space</span> 격발',
+           en:'<span class="kbd">Space</span> detonate' },
+    init(M){
+      M.shells=[]; M.nextShell=1.2; M.perfect=0; M.good=0; M.missed=0; M.armed=true;
+      const S=W.mainStage;
+      M.origin={x:S.x+9,z:S.z};
+      CAM.eye[0]=S.x+30; CAM.eye[1]=6.5; CAM.eye[2]=S.z+16;
+      $('#mgbal').classList.add('hide');
+    },
+    spawn(M){
+      const R=M.rng;
+      const rise=R.range(1.15,1.65);
+      M.shells.push({
+        x:M.origin.x+R.range(-11,11), z:M.origin.z+R.range(-7,7),
+        y0:1.5, apex:R.range(20,30), t:0, rise, judged:false, dead:false,
+        col:R.pick(['#ff5f6d','#ffd166','#4fe8c0','#6cb6ff','#ff9ec0','#b06ce0','#ffffff'])
+      });
+      AUDIO.sfx('launch');
+    },
+    update(M,dt){
+      if(M.phase==='run') M.nextShell-=dt;
+      if(M.phase==='run' && M.nextShell<=0 && M.t < M.dur-2.0){
+        M.nextShell=lerp(1.85,1.05,clamp01(M.t/M.dur))*M.rng.range(0.9,1.15);
+        this.spawn(M);
+      }
+      const press = M.phase==='run' && IN.keys.has(' ') && M.armed;
+      if(!IN.keys.has(' ')) M.armed = true;
+      let judgedThis = false;
+      for(const sh of M.shells){
+        if(sh.dead) continue;
+        sh.t+=dt;
+        const f=clamp01(sh.t/sh.rise);
+        sh.y=sh.y0+(sh.apex-sh.y0)*(1-(1-f)*(1-f));   // ease-out rise
+        if(Math.random()<dt*40 && !sh.judged)
+          FX.p(sh.x,sh.y,sh.z,(Math.random()-0.5)*0.7,-1.2,(Math.random()-0.5)*0.7,0.45,0.13,
+               1.0,0.66,0.28,{grav:-1,drag:1.6,kind:0,fade:2});
+        if(!sh.judged && press && !judgedThis){
+          judgedThis=true; M.armed=false; sh.judged=true;
+          const d=Math.abs(sh.t-sh.rise);
+          let grade,pts;
+          if(d<0.10){ grade='PERFECT'; pts=60; M.perfect++; M.combo=Math.min(3,M.combo+0.26); }
+          else if(d<0.26){ grade='GOOD'; pts=28; M.good++; M.combo=Math.min(3,M.combo+0.11); }
+          else { grade='EARLY'; pts=6; M.combo=1; }
+          const gain=Math.round(pts*M.combo);
+          M.score+=gain;
+          const shape = grade==='PERFECT' ? W.rng.pick(['burst','ring','willow','heart']) : 'burst';
+          FX.firework(sh.x,sh.y,sh.z,sh.col, grade==='PERFECT'?95:(grade==='GOOD'?58:26), shape);
+          FX.camShake(grade==='PERFECT'?0.34:0.18,0.3);
+          const sp=CAM.projectToScreen(sh.x,sh.y,sh.z);
+          if(sp) FX.floatScreen(sp.x,sp.y, grade+'  +'+gain,
+            grade==='PERFECT'?'#ffd166':(grade==='GOOD'?'#4fe8c0':'#ff9b6b'));
+          AUDIO.sfx(grade==='PERFECT'?'resolve':'point');
+          sh.dead=true;
+        }
+        if(!sh.judged && sh.t>sh.rise+0.42){
+          sh.judged=true; sh.dead=true; M.missed++; M.combo=1;
+          const sp=CAM.projectToScreen(sh.x,sh.y,sh.z);
+          if(sp) FX.floatScreen(sp.x,sp.y,T('불발','MISS'),'#ff5f6d');
+          FX.smoke(sh.x,sh.y,sh.z,5,true);
+          AUDIO.sfx('fail');
+        }
+      }
+      M.shells=M.shells.filter(sh=>!sh.dead||sh.t<sh.rise+2);
+      /* slow drift so the sky reads as a real vista */
+      const S=W.mainStage, a=M.t*0.06;
+      CAM.eye[0]=damp(CAM.eye[0],S.x+28+Math.sin(a)*5,1.4,dt);
+      CAM.eye[1]=damp(CAM.eye[1],6.5,1.4,dt);
+      CAM.eye[2]=damp(CAM.eye[2],S.z+17+Math.cos(a)*4,1.4,dt);
+      CAM.tgt[0]=S.x+9; CAM.tgt[1]=18; CAM.tgt[2]=S.z;
+      CAM.fov=58;
+    },
+    draw(M,dt){
+      for(const sh of M.shells){
+        if(sh.dead) continue;
+        const c=hex2rgb(sh.col);
+        M4.trsY(TMP,sh.x,sh.y,sh.z,RD.time*2,0.9,0.9,0.9);
+        RD.mNC('bulb',TMP,c[0],c[1],c[2],3.2,0.5,1,0,0);
+        /* timing ring: shrinks onto the shell, meeting it exactly at apex */
+        const f=clamp01(sh.t/sh.rise);
+        const r=lerp(3.4,0.62,f*f);
+        M4.trs(TMP,sh.x,sh.y,sh.z,PI/2,0,0,r,r,r);
+        const near=Math.abs(sh.t-sh.rise)<0.12;
+        RD.mNC('ring',TMP, near?1:0.75, near?0.85:0.85, near?0.35:1.0, near?3.0:1.1, 0.5,1,0,0);
+      }
+    },
+    hud(M){
+      return '<div class="mg-stat"><div class="l">'+T('점수','Score')+'</div><div class="v" style="color:var(--gold)">'+Math.round(M.score)+'</div></div>'
+        +'<div class="mg-stat"><div class="l">'+T('콤보','Combo')+'</div><div class="v" style="color:var(--accent-2)">×'+M.combo.toFixed(2)+'</div></div>'
+        +'<div class="mg-stat"><div class="l">PERFECT</div><div class="v" style="color:var(--gold)">'+M.perfect+'</div></div>'
+        +'<div class="mg-stat"><div class="l">'+T('불발','Miss')+'</div><div class="v" style="color:var(--danger)">'+M.missed+'</div></div>';
+    }
+  },
+  {
+    id:'pocha', ko:'포차 러시', en:'Pocha Rush', g:'🦐', fac:'pocha',
+    dur:50, scene:'festival', scoreRef:9000,
+    desc:{ ko:'주문이 밀려옵니다. 화면에 뜬 순서대로 1~4번 조리대를 눌러 접시를 완성하세요. 틀리면 처음부터입니다.',
+           en:'Orders pile up. Hit stations 1–4 in the order shown to plate each dish. One wrong key and the ticket restarts.' },
+    keys:{ ko:'<span class="kbd">1</span><span class="kbd">2</span><span class="kbd">3</span><span class="kbd">4</span> 조리대',
+           en:'<span class="kbd">1</span><span class="kbd">2</span><span class="kbd">3</span><span class="kbd">4</span> stations' },
+    init(M){
+      const f=M.fac||W.facilities.find(x=>x.defId==='pocha')||W.mainStage;
+      M.base={x:f.x,z:f.z+5.2};
+      M.stations=[0,1,2,3].map(i=>({ x:M.base.x+(i-1.5)*2.0, z:M.base.z, lit:0 }));
+      M.order=[]; M.step=0; M.orderT=0; M.orderLimit=6.5; M.cookT=0;
+      M.done=0; M.failed=0; M.prevKeys=[false,false,false,false];
+      this.newOrder(M);
+      $('#mgbal').classList.add('hide');
+    },
+    newOrder(M){
+      const len=clamp(2+Math.floor(M.t/16),2,4);
+      M.order=[];
+      for(let i=0;i<len;i++) M.order.push(M.rng.int(0,3));
+      M.step=0; M.orderT=0;
+      M.orderLimit=lerp(7.0,3.8,clamp01(M.t/M.dur))+len*0.55;
+    },
+    update(M,dt){
+      const live = M.phase==='run';
+      if(live) M.orderT+=dt;
+      M.cookT=Math.max(0,M.cookT-dt);
+      for(const st of M.stations) st.lit=Math.max(0,st.lit-dt*3.4);
+      const keys=['1','2','3','4'];
+      for(let i=0;i<4;i++){
+        const down=live && M.cookT<=0 && IN.keys.has(keys[i]);
+        if(down && !M.prevKeys[i]){
+          M.stations[i].lit=1;
+          if(i===M.order[M.step]){
+            M.step++; M.cookT=0.22;          /* the station has to actually cook */
+            M.score+=4*M.combo;
+            AUDIO.sfx('point');
+            FX.sparkle(M.stations[i].x,1.5,M.stations[i].z,'#4fe8c0',8);
+            if(M.step>=M.order.length){
+              M.done++;
+              M.combo=Math.min(4,M.combo+0.3);
+              const gain=Math.round(30*M.combo);
+              M.score+=gain;
+              AUDIO.sfx('cash');
+              FX.burst(M.base.x,M.base.z,'#ffd166',20,1.6);
+              const sp=CAM.projectToScreen(M.base.x,2.6,M.base.z);
+              if(sp) FX.floatScreen(sp.x,sp.y,T('완성! ','SERVED! ')+'+'+gain,'#ffd166');
+              this.newOrder(M);
+            }
+          } else {
+            M.failed++; M.combo=1; M.step=0;
+            M.score=Math.max(0,M.score-10);
+            AUDIO.sfx('error'); FX.camShake(0.25,0.2);
+            FX.burst(M.stations[i].x,M.stations[i].z,'#ff5f6d',12,1.4);
+            const sp=CAM.projectToScreen(M.stations[i].x,1.8,M.stations[i].z);
+            if(sp) FX.floatScreen(sp.x,sp.y,T('실수','WRONG'),'#ff5f6d');
+          }
+        }
+        M.prevKeys[i]=down;
+      }
+      if(live && M.orderT>M.orderLimit){
+        M.failed++; M.combo=1;
+        M.score=Math.max(0,M.score-14);
+        AUDIO.sfx('fail');
+        const sp=CAM.projectToScreen(M.base.x,2.6,M.base.z);
+        if(sp) FX.floatScreen(sp.x,sp.y,T('주문 취소','WALKED OUT'),'#ff5f6d');
+        this.newOrder(M);
+      }
+      CAM.eye[0]=damp(CAM.eye[0],M.base.x,3,dt);
+      CAM.eye[1]=damp(CAM.eye[1],4.1,3,dt);
+      CAM.eye[2]=damp(CAM.eye[2],M.base.z+8.6,3,dt);
+      CAM.tgt[0]=M.base.x; CAM.tgt[1]=1.3; CAM.tgt[2]=M.base.z;
+      CAM.fov=52;
+    },
+    draw(M,dt){
+      const COL=[[1,0.42,0.36],[1,0.82,0.4],[0.31,0.79,0.72],[0.55,0.72,1]];
+      for(let i=0;i<4;i++){
+        const st=M.stations[i], c=COL[i];
+        const isNext = M.order[M.step]===i;
+        const em = st.lit*2.6 + (isNext?1.1+Math.sin(RD.time*6)*0.5:0.15);
+        M4.trsY(TMP,st.x,terrainH(st.x,st.z),st.z,0,1.5,1.5,1.5);
+        RD.mNC('mg_station',TMP,c[0],c[1],c[2],em,0.5,1,0,0);
+        if(isNext) RD.decal(st.x,st.z,1.5,1.5,0,c[0],c[1],c[2],0.6,1,0.1,i);
+        if(st.lit>0.05) FX.sparkle(st.x,1.6,st.z,'#ffffff',1);
+      }
+      /* the ticket, floating above the counter */
+      for(let i=0;i<M.order.length;i++){
+        const c=COL[M.order[i]];
+        const doneStep = i<M.step;
+        const x=M.base.x+(i-(M.order.length-1)/2)*0.95;
+        const y=3.15+Math.sin(RD.time*2+i)*0.05;
+        M4.trsY(TMP,x,y,M.base.z-0.4,RD.time*1.2, doneStep?0.34:0.52, doneStep?0.34:0.52, doneStep?0.34:0.52);
+        RD.mNC('progmark',TMP,c[0],c[1],c[2], doneStep?0.25:1.9, 0.5,1,0,0);
+      }
+      /* order timer as a shrinking bar under the ticket */
+      const frac=clamp01(1-M.orderT/M.orderLimit);
+      RD.decal(M.base.x, M.base.z-1.6, 1.9*frac, 0.20, 0,
+               frac<0.3?1:0.35, frac<0.3?0.3:0.9, frac<0.3?0.3:0.8, 0.85, 0, 0.02, 0);
+    },
+    hud(M){
+      return '<div class="mg-stat"><div class="l">'+T('점수','Score')+'</div><div class="v" style="color:var(--gold)">'+Math.round(M.score)+'</div></div>'
+        +'<div class="mg-stat"><div class="l">'+T('콤보','Combo')+'</div><div class="v" style="color:var(--accent-2)">×'+M.combo.toFixed(2)+'</div></div>'
+        +'<div class="mg-stat"><div class="l">'+T('완성','Served')+'</div><div class="v" style="color:var(--ok)">'+M.done+'</div></div>'
+        +'<div class="mg-stat"><div class="l">'+T('실수','Errors')+'</div><div class="v" style="color:var(--danger)">'+M.failed+'</div></div>';
+    }
+  }
+];
+const MINIGAME_BY = {}; for(const g of MINIGAMES) MINIGAME_BY[g.id]=g;
+
+/* is a game available right now, and if not, why */
+function minigameStatus(g){
+  if(W.stage!=='live') return { ok:false, why:T('개장 중에만 플레이할 수 있습니다','Only while the festival is live') };
+  if(W.minigamePlayed[W.day+':'+g.id]) return { ok:false, why:T('오늘은 이미 플레이했습니다','Already played today') };
+  const fac = W.facilities.find(f=>f.defId===g.fac && f.active);
+  if(!fac) return { ok:false, why:T((FAC[g.fac]?facName(FAC[g.fac]):g.fac)+' 시설이 필요합니다',
+                                    'Requires '+(FAC[g.fac]?facName(FAC[g.fac]):g.fac)) };
+  return { ok:true, fac };
+}
+
 const MINI = {
-  active:false, kind:null, fac:null,
+  active:false, game:null, fac:null,
   t:0, dur:52, phase:'count', countT:3,
-  x:0, z:0, speed:0, lane:0, tilt:0, tiltV:0,
-  score:0, combo:1, rings:0, hits:0, wipe:0, best:0,
-  obstacles:[], pickups:[], nextSpawn:0,
-  courseZ:150, endX:0,
-  start(kind, fac){
+  score:0, combo:1, courseZ:150, rng:null,
+  start(gameId, fac){
     if(this.active) return;
-    if(W.stage!=='live'){ FX.pushToast('⛔ '+T('개장 중에만 플레이할 수 있습니다','Only available while the festival is live'),'err'); return; }
-    if(W.minigamePlayed['d'+W.day]){ FX.pushToast('⛔ '+T('오늘은 이미 플레이했습니다','Already played today'),'err'); AUDIO.sfx('error'); return; }
-    this.active = true; this.kind = kind; this.fac = fac;
-    this.t = 0; this.phase='count'; this.countT = 3.2;
-    this.x = -180; this.z = this.courseZ; this.speed = 16; this.lane = 0;
-    this.tilt = 0; this.tiltV = 0;
-    this.score = 0; this.combo = 1; this.rings = 0; this.hits = 0; this.wipe = 0;
-    this.obstacles.length = 0; this.pickups.length = 0; this.nextSpawn = 0;
-    this.rng = makeRNG(W.seed + W.day*977);
+    const g = MINIGAME_BY[gameId];
+    if(!g){ console.warn('unknown minigame', gameId); return; }
+    const st = minigameStatus(g);
+    if(!st.ok){ AUDIO.sfx('error'); FX.pushToast('⛔ '+st.why,'err'); return; }
+    this.game = g; this.fac = fac || st.fac;
+    this.active = true;
+    this.t = 0; this.dur = g.dur; this.phase='count'; this.countT=3.2;
+    this.score = 0; this.combo = 1;
+    this.rng = makeRNG(W.seed + W.day*977 + gameId.length*31);
+    W.minigamePlayed[W.day+':'+g.id] = true;
     $('#mghud').classList.add('on');
-    $('#ui').style.opacity = '0.15';
-    $('#ui').style.pointerEvents = 'none';
-    SCENE.hide();
-    UI.closeModal();
-    CAM.mode = 'mini';
+    $('#mgbal').classList.remove('hide');
+    $('#ui').style.opacity='0.15'; $('#ui').style.pointerEvents='none';
+    SCENE.hide(); UI.closeModal();
+    CAM.mode='mini';
     AUDIO.setScene('minigame');
-    RD.heatMode = -1;
-    $('#mgkeys').innerHTML = '<span class="kbd">A</span><span class="kbd">D</span> '+T('좌우 이동 · 균형','Steer & balance')
-      +' &nbsp;·&nbsp; <span class="kbd">Esc</span> '+T('포기','Quit');
-    W.minigamePlayed['d'+W.day] = true;
-    AUDIO.sfx('splash');
+    RD.heatMode=-1;
+    $('#mgkeys').innerHTML = (LANG==='ko'?g.keys.ko:g.keys.en)
+      + ' &nbsp;·&nbsp; <span class="kbd">Esc</span> '+T('포기','Quit');
+    g.init(this);
+    AUDIO.sfx('whoosh');
   },
   quit(){ this.finish(false); },
   finish(complete){
     if(!this.active) return;
-    this.active = false;
+    const g = this.game;
+    this.active = false; this.game = null;
     $('#mghud').classList.remove('on');
     $('#mgcount').classList.add('hide');
-    $('#ui').style.opacity = '';
-    $('#ui').style.pointerEvents = '';
-    CAM.mode = 'overview';
+    $('#mgbal').classList.remove('hide');
+    $('#ui').style.opacity=''; $('#ui').style.pointerEvents='';
+    CAM.mode='overview';
     AUDIO.setScene(W.clock>1140?'night':'live');
     const sc = Math.round(this.score);
     W.minigameBest = Math.max(W.minigameBest, sc);
     if(complete && sc > 0){
-      const gold = Math.round(sc*0.45);
-      const buzz = clamp(sc/110, 0, 15);
-      W.tx(gold, 'MINIGAME', T('서핑','Surf'));
-      W.buzzEvent(buzz, 'MINIGAME');
-      W.satEvent(buzz*0.25, 'MINIGAME');
-      W.gems += Math.floor(sc/300);
-      FX.pushToast('🏄 '+T('서핑 완주','Surf run complete')+' — <b class="gold-t">+'+fmtInt(gold)+'</b> · Buzz +'+buzz.toFixed(0), 'gold', 4200);
+      /* a flawless run is worth about a quarter of a good day's profit */
+      const ratio = Math.min(1.15, sc/(g.scoreRef||3000));
+      const gold = Math.round(ratio*480);
+      const buzz = clamp(ratio*13, 0, 13);
+      W.tx(gold,'MINIGAME', LANG==='ko'?g.ko:g.en);
+      W.buzzEvent(buzz,'MINIGAME');
+      W.satEvent(buzz*0.25,'MINIGAME');
+      W.gems += Math.floor(ratio*3);
+      FX.pushToast(g.g+' '+(LANG==='ko'?g.ko:g.en)+' '+T('완료','complete')
+        +' — <b class="gold-t">+'+fmtInt(gold)+'</b> · Buzz +'+buzz.toFixed(0),'gold',4200);
       AUDIO.sfx('resolve');
       pushSNS({ name:T('운영자','Operator'), arch:ARCH_BY.surfer, kind:'pos',
-                text: T('운영자가 직접 파도를 탔다! 점수 '+sc,'The operator rode the waves! Score '+sc),
+                text:T('운영자가 '+g.ko+'에 직접 나섰다! 점수 '+sc,
+                       'The operator took on '+g.en+'! Score '+sc),
                 cause:'MINIGAME', day:W.day, clock:W.clock, color:[0.25,0.7,0.88] });
     } else {
-      FX.pushToast('🏄 '+T('서핑 중단','Surf run abandoned'),'warn');
+      FX.pushToast(g.g+' '+T('중단','abandoned'),'warn');
     }
     UI.buildTopbar();
   },
   update(dt){
     if(!this.active) return;
-    const HUD = $('#mgtop');
-    if(this.phase === 'count'){
-      this.countT -= dt;
-      const c = $('#mgcount');
-      c.classList.remove('hide');
-      const n = Math.ceil(this.countT);
-      if(n !== this._lastCount){ this._lastCount = n; if(n>0) AUDIO.sfx('count'); }
-      c.textContent = this.countT > 0.35 ? String(Math.max(1,n)) : 'GO!';
-      if(this.countT <= -0.5){ this.phase='run'; c.classList.add('hide'); this._lastCount=null; }
-      this.updateCamera(dt);
+    if(this.phase==='count'){
+      this.countT-=dt;
+      const c=$('#mgcount'); c.classList.remove('hide');
+      const n=Math.ceil(this.countT);
+      if(n!==this._lastCount){ this._lastCount=n; if(n>0) AUDIO.sfx('count'); }
+      c.textContent = this.countT>0.35 ? String(Math.max(1,n)) : 'GO!';
+      if(this.countT<=-0.5){ this.phase='run'; c.classList.add('hide'); this._lastCount=null; }
+      this.game.update(this, 0);
       return;
     }
     this.t += dt;
-    /* input */
-    let steer = 0;
-    if(IN.key('a')||IN.key('ArrowLeft')) steer -= 1;
-    if(IN.key('d')||IN.key('ArrowRight')) steer += 1;
-    this.speed = Math.min(34, this.speed + dt*0.85);
-    /* lateral movement costs balance */
-    this.lane = clamp(this.lane + steer*dt*11, -9.5, 9.5);
-    /* steering fights balance: sustained input settles just under the danger
-       line, so the wave wobble is what actually tips you over */
-    this.tiltV += steer*dt*2.6;
-    this.tiltV -= this.tilt*dt*3.4;              // self-centering
-    this.tiltV += Math.sin(this.t*1.7)*dt*0.38;  // wave wobble
-    this.tiltV += Math.sin(this.t*0.61+1.3)*dt*0.22;
-    this.tiltV *= Math.exp(-dt*1.7);
-    this.tilt = clamp(this.tilt + this.tiltV*dt*2.4, -1.6, 1.6);
-    this.x += this.speed*dt;
-    this.z = this.courseZ + this.lane;
-    /* score */
-    this.score += dt*this.speed*0.30*this.combo;
-    /* spawn */
-    this.nextSpawn -= dt;
-    if(this.nextSpawn <= 0){
-      this.nextSpawn = lerp(0.74, 0.36, clamp01(this.t/this.dur)) * this.rng.range(0.78,1.38);
-      const ahead = this.x + 92;
-      if(this.rng.chance(0.52)){
-        this.obstacles.push({ x:ahead, l:this.rng.range(-9,9), kind:this.rng.int(0,2), hit:false, r:1.5 });
-      } else {
-        this.pickups.push({ x:ahead, l:this.rng.range(-8.5,8.5), got:false, ph:this.rng.range(0,TAU) });
-      }
-    }
-    /* collisions */
-    for(const o of this.obstacles){
-      if(o.hit || o.x < this.x-8) continue;
-      if(Math.abs(o.x - this.x) < 1.5 && Math.abs(o.l - this.lane) < 1.5){
-        o.hit = true; this.hits++;
-        this.combo = 1;
-        this.score = Math.max(0, this.score - 30);
-        this.speed = Math.max(11, this.speed*0.62);
-        this.tiltV += (this.lane>o.l?1:-1)*1.9;
-        FX.camShake(0.5, 0.4);
-        FX.burst(this.x, this.z, '#ff5f6d', 22, -0.2);
-        AUDIO.sfx('fail');
-        FX.floatWorld(this.x, this.z, '-30', '#ff5f6d', 2.4);
-      }
-    }
-    for(const p of this.pickups){
-      if(p.got || p.x < this.x-8) continue;
-      if(Math.abs(p.x - this.x) < 1.7 && Math.abs(p.l - this.lane) < 1.8){
-        p.got = true; this.rings++;
-        this.combo = Math.min(3, this.combo + 0.25);
-        this.score += 22*this.combo;
-        AUDIO.sfx('point');
-        FX.sparkle(this.x, 0.6, this.z, '#ffd166', 14);
-        FX.floatWorld(this.x, this.z, '+'+Math.round(22*this.combo), '#ffd166', 2.4);
-      }
-    }
-    /* wipeout */
-    const bal = $('#mgbal');
-    const danger = Math.abs(this.tilt) > 0.92;
-    bal.classList.toggle('danger', danger);
-    if(danger) this.wipe += dt; else this.wipe = Math.max(0, this.wipe - dt*1.6);
-    if(this.wipe > 0.75){
-      this.wipe = 0; this.tilt = 0; this.tiltV = 0;
-      this.combo = 1;
-      this.score = Math.max(0, this.score - 60);
-      this.speed = 12;
-      FX.camShake(0.85, 0.6);
-      FX.burst(this.x, this.z, '#7fe0ec', 40, 0.1);
-      AUDIO.sfx('splash');
-      FX.floatWorld(this.x, this.z, T('전복!','WIPEOUT!'), '#ff5f6d', 3);
-    }
-    /* cleanup */
-    if(this.obstacles.length > 40) this.obstacles.splice(0, 12);
-    if(this.pickups.length > 40) this.pickups.splice(0, 12);
-    /* HUD */
-    const rem = Math.max(0, this.dur - this.t);
-    HUD.innerHTML =
-      '<div class="mg-stat"><div class="l">'+T('점수','Score')+'</div><div class="v" style="color:var(--gold)">'+Math.round(this.score)+'</div></div>'
-     +'<div class="mg-stat"><div class="l">'+T('콤보','Combo')+'</div><div class="v" style="color:var(--accent-2)">×'+this.combo.toFixed(1)+'</div></div>'
-     +'<div class="mg-stat"><div class="l">'+T('속도','Speed')+'</div><div class="v">'+Math.round(this.speed*3.6)+'</div></div>'
-     +'<div class="mg-stat"><div class="l">'+T('남은 시간','Time')+'</div><div class="v" style="color:'+(rem<10?'var(--danger)':'inherit')+'">'+rem.toFixed(1)+'</div></div>';
-    $('#mgneedle').style.left = (50 + this.tilt*31) + '%';
-    $('#mgballab').textContent = danger ? T('균형을 잡으세요!','REGAIN BALANCE!') : T('균형 · BALANCE','BALANCE');
-    /* spray */
-    if(Math.random() < dt*40){
-      FX.p(this.x - 1.2, 0.1, this.z + (Math.random()-0.5)*1.6,
-           -this.speed*0.25 + (Math.random()-0.5)*3, 1.2+Math.random()*2.4, (Math.random()-0.5)*3,
-           0.5, 0.16, 0.92,0.98,1, {grav:-7, drag:1.4, add:false, alpha:0.7});
-    }
-    this.updateCamera(dt);
-    if(this.t >= this.dur) this.finish(true);
-  },
-  updateCamera(dt){
-    const back = 13, up = 5.2;
-    const ex = this.x - back, ey = up, ez = this.z - this.lane*0.35;
-    CAM.eye[0] = damp(CAM.eye[0]||ex, ex, 8, dt);
-    CAM.eye[1] = damp(CAM.eye[1]||ey, ey, 6, dt);
-    CAM.eye[2] = damp(CAM.eye[2]||ez, ez, 6, dt);
-    CAM.tgt[0] = this.x + 9; CAM.tgt[1] = 1.0; CAM.tgt[2] = this.z + this.lane*0.15;
-    CAM.fov = 62 + clamp01((this.speed-16)/20)*12;
+    this.game.update(this, dt);
+    const rem=Math.max(0,this.dur-this.t);
+    $('#mgtop').innerHTML = this.game.hud(this)
+      + '<div class="mg-stat"><div class="l">'+T('남은 시간','Time')+'</div><div class="v" style="color:'
+      + (rem<10?'var(--danger)':'inherit')+'">'+rem.toFixed(1)+'</div></div>';
+    if(this.t>=this.dur) this.finish(true);
   },
   draw(dt){
-    if(!this.active) return;
-    /* surfer */
-    const tiltA = this.tilt*0.5;
-    const y = 0.25 + Math.sin(this.t*3.1)*0.10;
-    M4.trs(TMP, this.x, y, this.z, 0, PI/2, tiltA, 1.15,1.15,1.15);
-    RD.mNC('surfboard', TMP, 0.96,0.98,1, 0, 0.8,1,0,0);
-    const hip = y + 0.42;
-    M4.trs(TMP, this.x, hip, this.z, 0, PI/2, tiltA*0.7, 1,1,1);
-    RD.mNC('npc_body', TMP, 0.81,0.94,1.0, 0, 0.5,1,0,0);
-    const lean = (CH.neck-CH.hip);
-    M4.trs(TMP, this.x - Math.sin(tiltA)*lean, hip+lean, this.z, 0, PI/2, tiltA*0.7, 1,1,1);
-    RD.mNC('npc_head', TMP, 0.98,0.84,0.74, 0, 0.5,1,0,0);
-    RD.mNC('npc_hair', TMP, 0.29,0.23,0.19, 0, 0.5,1,0,0);
-    RD.mNC('npc_cap', TMP, 1.0,0.62,0.70, 0, 0.5,1,0,0);
-    /* wake */
-    RD.decal(this.x-3, this.z, 3.4, 1.3, 0, 1,1,1, 0.34, 2, 0.1, 0);
-    /* obstacles */
-    for(const o of this.obstacles){
-      if(o.x < this.x-14 || o.x > this.x+110) continue;
-      const oz = this.courseZ + o.l;
-      const bob = Math.sin(RD.time*1.8 + o.x*0.3)*0.14;
-      if(o.kind===0){
-        M4.trsY(TMP, o.x, -0.5+bob, oz, o.x, 1.4,1.4,1.4);
-        RD.mNC('rock', TMP, o.hit?0.4:0.52,0.5,0.48, 0, 0.7,1,0,0);
-      } else if(o.kind===1){
-        M4.trsY(TMP, o.x, -0.35+bob, oz, RD.time*0.9, 1.3,1.3,1.3);
-        RD.mNC('buoy', TMP, 1,0.32,0.22, o.hit?0:0.5, 0.6,1,0,0);
-      } else {
-        M4.trsY(TMP, o.x, -0.15+bob, oz, RD.time*0.6, 1.2,1.2,1.2);
-        RD.mNC('jelly', TMP, 1,0.5,0.68, o.hit?0:0.9, 0.5,1,0,0);
-      }
-      if(!o.hit) RD.decal(o.x, oz, 1.6,1.6, 0, 1,0.35,0.35, 0.32, 1, 0.1, o.x);
-    }
-    /* pickups */
-    for(const p of this.pickups){
-      if(p.got || p.x < this.x-14 || p.x > this.x+110) continue;
-      const pz = this.courseZ + p.l;
-      M4.trs(TMP, p.x, 0.85 + Math.sin(RD.time*2.4+p.ph)*0.22, pz, 0, RD.time*1.6, 0, 1,1,1);
-      RD.mNC('ring', TMP, 1,0.82,0.4, 2.2, 0.5,1,0,0);
-      if(Math.random()<dt*6) FX.sparkle(p.x, 0.9, pz, '#ffd166', 1);
-    }
+    if(!this.active || !this.game) return;
+    this.game.draw(this, dt);
   }
 };
 /* ===========================================================================
@@ -8459,7 +8740,9 @@ const GROUND = {
         const f = best;
         p.innerHTML = '<span class="kbd">E</span> '+f.def.g+' <b>'+facName(f.def)+'</b>'
           + (f.def.queueMax ? ' <span class="muted">'+T('대기','Queue')+' '+f.queue.length+'/'+f.def.queueMax+'</span>' : '')
-          + (f.def.minigame ? ' <span style="color:var(--gold)">· '+T('미니게임','Minigame')+'</span>' : '');
+          + (f.def.minigame && MINIGAME_BY[f.def.minigame]
+              ? ' <span style="color:var(--gold)">· '+MINIGAME_BY[f.def.minigame].g+' '
+                + (LANG==='ko'?MINIGAME_BY[f.def.minigame].ko:MINIGAME_BY[f.def.minigame].en)+'</span>' : '');
       } else if(bestKind==='npc'){
         const n = best;
         const mood = n.sat>72?'😊':(n.sat<48?'😣':'😐');
@@ -9160,6 +9443,7 @@ Bus.on('key', (k, e)=>{
     case 'f': if(CAM.mode==='ground') GROUND.togglePhoto(); break;
     case 'e': if(CAM.mode==='ground') GROUND.interact(); break;
     case 'p': UI.legendOn = !UI.legendOn; UI.refreshLegend(); UI.buildDock(); break;
+    case 'g': if(W.stage==='live') UI.openMinigamePicker(); break;
     case '1': if(W.stage==='live'){ UI.setSpeed(1); UI.buildDock(); } break;
     case '2': if(W.stage==='live'){ UI.setSpeed(2); UI.buildDock(); } break;
     case '3': if(W.stage==='live'){ UI.setSpeed(4); UI.buildDock(); } break;
@@ -9356,9 +9640,11 @@ function frame(now){
   if(GLOBE.active){
     GLOBE.draw(dt);
   } else if(MINI.active){
+    /* the ocean course renders bare water; the festival-set games keep the
+       actual grounds behind them so the venue is still visible */
+    if(MINI.game && MINI.game.scene === 'festival') SCENE.draw(dt);
+    else { M4.trsY(TMP, 0,0,0, 0, 1,1,1); RD.mNC('terrain', TMP, 1,1,1, 0, 0.9,1,0,0); }
     MINI.draw(dt);
-    M4.trsY(TMP, 0,0,0, 0, 1,1,1);
-    RD.mNC('terrain', TMP, 1,1,1, 0, 0.9,1,0,0);
   } else {
     SCENE.draw(dt);
   }
