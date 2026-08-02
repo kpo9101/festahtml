@@ -652,6 +652,38 @@ table.ledger .cid{font-family:var(--mono);font-size:.82em;color:var(--ink-3)}
 #mghud .balance.danger .track{border-color:var(--danger);animation:riskPulse .6s infinite}
 #mghud .mg-keys{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);font-size:.72em;color:var(--ink-3);display:flex;gap:10px;align-items:center}
 #mgcount{position:absolute;inset:0;display:grid;place-items:center;font-size:6em;font-weight:900;color:#fff;text-shadow:0 6px 40px rgba(0,0,0,.8);pointer-events:none}
+#mgtut{position:absolute;inset:0;display:none;place-items:center;padding:20px;
+  background:rgba(4,10,22,.74);backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px);
+  pointer-events:auto;z-index:2}
+#mgtut.on{display:grid}
+#mgtut .tc{
+  width:min(760px,94vw);max-height:92vh;overflow-y:auto;
+  background:linear-gradient(170deg,#10203c,#0a1428 62%);
+  border:1px solid var(--edge-2);border-radius:22px;box-shadow:var(--sh-3);
+  padding:24px 26px;animation:modalIn .3s cubic-bezier(.2,.9,.25,1)
+}
+#mgtut .th{display:flex;align-items:center;gap:14px;margin-bottom:6px}
+#mgtut .th .g{font-size:2.4em;line-height:1;filter:drop-shadow(0 4px 12px rgba(0,0,0,.6))}
+#mgtut .th h2{margin:0;font-size:1.5em;font-weight:900;letter-spacing:-.01em}
+#mgtut .th .len{margin-left:auto;font:800 .78em var(--mono);color:var(--ink-3)}
+#mgtut .lead{margin:0 0 16px;color:var(--ink-2);font-size:.9em;line-height:1.6}
+#mgtut .cols{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media (max-width:720px){#mgtut .cols{grid-template-columns:1fr}}
+#mgtut .col{background:rgba(255,255,255,.045);border:1px solid var(--edge);
+  border-radius:14px;padding:13px}
+#mgtut .col h4{margin:0 0 7px;font-size:.72em;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--ink-3);font-weight:800;display:flex;align-items:center;gap:6px}
+#mgtut .col li{font-size:.83em;line-height:1.55;color:var(--ink);margin:0 0 5px;list-style:none}
+#mgtut .col ul{margin:0;padding:0}
+#mgtut .col li b{color:var(--accent-2)}
+#mgtut .keys{display:flex;flex-wrap:wrap;gap:5px;align-items:center;font-size:.86em}
+#mgtut .tf{display:flex;align-items:center;gap:12px;margin-top:18px;flex-wrap:wrap}
+#mgtut .tf .sp{flex:1}
+#mgtut .again{display:flex;align-items:center;gap:7px;font-size:.78em;color:var(--ink-3);cursor:pointer}
+#mgtut .again .box{width:17px;height:17px;border-radius:5px;border:1px solid var(--edge-2);
+  display:grid;place-items:center;font-size:.72em;background:rgba(0,0,0,.25)}
+#mgtut .again.on .box{background:var(--accent);color:#04181a}
+#mgtut .clockwarn{font-size:.76em;color:var(--warn)}
 
 /* ============================================================ GROUND HUD */
 #groundhud{position:fixed;inset:0;z-index:40;display:none;pointer-events:none}
@@ -854,6 +886,7 @@ body.ground-active #leftcol:hover,body.ground-active #rightcol:hover{opacity:1}
   </div>
   <div class="mg-keys" id="mgkeys"></div>
   <div id="mgcount" class="hide"></div>
+  <div id="mgtut"></div>
 </div>
 
 <div id="finaleui">
@@ -2616,7 +2649,7 @@ const HEAT_W = 96, HEAT_H = 72;
    =========================================================================== */
 const SETTINGS = {
   master:0.8, music:0.55, sfx:0.8, ambience:0.6,
-  vignette:true, grain:true, patterns:true, reduceMotion:false, bgmSource:'youtube',
+  vignette:true, grain:true, patterns:true, reduceMotion:false, bgmSource:'youtube', minigameTutorial:true,
   hicontrast:false, colorblind:'off', uiScale:1,
   quality:'high', edgeScroll:true, invertY:false, sens:1.0,
   showFps:false, autoPause:true, tutorial:true, camShake:true,
@@ -8110,6 +8143,7 @@ Object.assign(UI, {
         toggle(T('화면 가장자리 스크롤','Edge scrolling'), T('커서를 가장자리로 옮겨 이동','Move cursor to screen edge to pan'),'edgeScroll');
         toggle(T('FPS 표시','Show FPS'), T('성능 통계 표시 (AT-010)','Performance stats (AT-010)'),'showFps');
         toggle(T('튜토리얼 힌트','Tutorial hints'), T('처음 플레이 안내','Guidance for first-time players'),'tutorial');
+        toggle(T('미니게임 설명','Minigame briefing'), T('미니게임 시작 전 목표·조작 안내','Goal and controls before each minigame'),'minigameTutorial');
         f.appendChild(el('button',{class:'btn',html:'↺ '+T('기본값','Defaults'),onclick:()=>{
           localStorage.removeItem('ff_settings'); location.reload();
         }}));
@@ -8691,6 +8725,34 @@ const MINIGAMES = [
 ];
 const MINIGAME_BY = {}; for(const g of MINIGAMES) MINIGAME_BY[g.id]=g;
 
+/* Pre-game briefing. Each game gets a goal, its controls, and the one thing
+   that actually decides a good run from a bad one. */
+const MINIGAME_BRIEF = {
+  surf: {
+    goal:{ ko:['<b>링</b>을 모아 점수를 쌓습니다.','바위·부표·해파리에 부딪히면 감점되고 속도가 떨어집니다.','속도가 빠를수록 점수가 더 빨리 쌓입니다.'],
+           en:['Collect <b>rings</b> to build score.','Rocks, buoys and jellyfish cost points and speed.','The faster you go, the faster score accrues.'] },
+    keys:{ ko:'<span class="kbd">A</span> 왼쪽 · <span class="kbd">D</span> 오른쪽',
+           en:'<span class="kbd">A</span> left · <span class="kbd">D</span> right' },
+    tip:{ ko:['방향을 틀면 <b>균형 게이지</b>가 무너집니다.','게이지가 빨갛게 된 채로 버티면 <b>전복</b>됩니다.','링 욕심과 안정 사이를 재세요.'],
+          en:['Steering costs <b>balance</b>.','Stay in the red too long and you <b>wipe out</b>.','Weigh greed for rings against staying upright.'] }
+  },
+  fireworks: {
+    goal:{ ko:['무대에서 쏘아 올린 불꽃을 <b>정점</b>에서 터뜨립니다.','정확할수록 큰 불꽃과 높은 점수가 나옵니다.','놓치면 불발되고 콤보가 끊깁니다.'],
+           en:['Detonate each shell at its <b>apex</b>.','The tighter the timing, the bigger the burst and the score.','Miss it and the shell fizzles, breaking your combo.'] },
+    keys:{ ko:'<span class="kbd">Space</span> 격발', en:'<span class="kbd">Space</span> detonate' },
+    tip:{ ko:['불꽃 주위의 <b>링이 줄어들며</b> 정점에 맞춰 겹칩니다.','링이 심지에 딱 붙는 순간이 <b>PERFECT</b>입니다.','한 번에 하나씩만 판정되니 서두르지 마세요.'],
+          en:['A <b>ring shrinks</b> onto each shell, meeting it at the apex.','The instant it touches the core is <b>PERFECT</b>.','Only one shell is judged per press — do not mash.'] }
+  },
+  pocha: {
+    goal:{ ko:['주문이 <b>색 순서</b>로 표시됩니다.','그 순서대로 1~4번 조리대를 눌러 접시를 완성하세요.','주문을 완성할수록 콤보가 올라갑니다.'],
+           en:['Each ticket shows a <b>colour sequence</b>.','Hit stations 1–4 in that order to plate the dish.','Every completed ticket raises your combo.'] },
+    keys:{ ko:'<span class="kbd">1</span><span class="kbd">2</span><span class="kbd">3</span><span class="kbd">4</span> 조리대',
+           en:'<span class="kbd">1</span><span class="kbd">2</span><span class="kbd">3</span><span class="kbd">4</span> stations' },
+    tip:{ ko:['<b>다음에 눌러야 할 조리대</b>가 빛나고 바닥에 링이 뜹니다.','틀리면 그 주문은 <b>처음부터</b> 다시입니다.','조리대마다 짧은 조리 시간이 있어 연타는 통하지 않습니다.'],
+          en:['The <b>next station</b> glows and gets a ring on the ground.','A wrong key restarts that ticket <b>from the top</b>.','Each station needs a moment to cook — mashing will not help.'] }
+  }
+};
+
 /* is a game available right now, and if not, why */
 function minigameStatus(g){
   if(W.stage!=='live') return { ok:false, why:T('개장 중에만 플레이할 수 있습니다','Only while the festival is live') };
@@ -8730,8 +8792,56 @@ const MINI = {
       + ' &nbsp;·&nbsp; <span class="kbd">Esc</span> '+T('포기','Quit');
     g.init(this);
     AUDIO.sfx('whoosh');
+    if(SETTINGS.minigameTutorial) this.showBrief(g);
+    else this.phase = 'count';
   },
-  quit(){ this.finish(false); },
+  /* Briefing sits in front of the countdown. Festival time keeps running, so
+     the player is told as much rather than being quietly charged for reading. */
+  showBrief(g){
+    this.phase = 'brief';
+    const br = MINIGAME_BRIEF[g.id];
+    const L = LANG==='ko';
+    const box = $('#mgtut');
+    const list = arr => el('ul',{}, ...arr.map(t=>el('li',{html:'• '+t})));
+    const card = el('div',{class:'tc'},
+      el('div',{class:'th'},
+        el('span',{class:'g',text:g.g}),
+        el('h2',{text:L?g.ko:g.en}),
+        el('span',{class:'len',text:g.dur+'s'})),
+      el('p',{class:'lead',text:L?g.desc.ko:g.desc.en}),
+      el('div',{class:'cols'},
+        el('div',{class:'col'}, el('h4',{},el('span',{text:'🎯'}),el('span',{text:T('목표','Goal')})),
+          list(L?br.goal.ko:br.goal.en)),
+        el('div',{class:'col'}, el('h4',{},el('span',{text:'🎮'}),el('span',{text:T('조작','Controls')})),
+          el('div',{class:'keys',html:L?br.keys.ko:br.keys.en}),
+          el('div',{class:'keys',style:{marginTop:'8px'},
+            html:'<span class="kbd">Esc</span> '+T('언제든 포기','Quit any time')})),
+        el('div',{class:'col'}, el('h4',{},el('span',{text:'💡'}),el('span',{text:T('요령','Tips')})),
+          list(L?br.tip.ko:br.tip.en))),
+      el('div',{class:'tf'},
+        (()=>{ const a=el('div',{class:'again'}, el('span',{class:'box',text:''}),
+                 el('span',{text:T('다음부터 표시하지 않기','Do not show again')}));
+               a.addEventListener('click',()=>{ const on=!a.classList.contains('on');
+                 a.classList.toggle('on',on); a.querySelector('.box').textContent = on?'✓':'';
+                 SETTINGS.minigameTutorial = !on; SETTINGS.apply(); });
+               return a; })(),
+        el('div',{class:'sp'}),
+        el('span',{class:'clockwarn',text:'⏱ '+T('읽는 동안에도 축제 시간은 흐릅니다','Festival time keeps running while you read')}),
+        el('button',{class:'btn pri lg',html:T('시작','Start')+' <span class="k">Space</span>',
+          onclick:()=>this.beginPlay()})));
+    box.innerHTML='';
+    box.appendChild(card);
+    box.classList.add('on');
+  },
+  beginPlay(){
+    if(this.phase !== 'brief') return;
+    $('#mgtut').classList.remove('on');
+    $('#mgtut').innerHTML='';
+    this.phase = 'count';
+    IN.reset();                      /* the Start key must not carry into play */
+    AUDIO.sfx('click');
+  },
+  quit(){ $('#mgtut').classList.remove('on'); $('#mgtut').innerHTML=''; this.finish(false); },
   finish(complete){
     if(!this.active) return;
     const g = this.game;
@@ -8769,6 +8879,12 @@ const MINI = {
   },
   update(dt){
     if(!this.active) return;
+    if(this.phase==='brief'){
+      /* let the game keep its camera alive behind the briefing */
+      this.game.update(this, 0);
+      if(IN.keys.has(' ') || IN.keys.has('Enter')) this.beginPlay();
+      return;
+    }
     if(this.phase==='count'){
       this.countT-=dt;
       const c=$('#mgcount'); c.classList.remove('hide');
