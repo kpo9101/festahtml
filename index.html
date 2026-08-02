@@ -534,36 +534,6 @@ table.ledger .cid{font-family:var(--mono);font-size:.82em;color:var(--ink-3)}
 #title .foot a{color:#7fa5cd;text-decoration:none;border-bottom:1px dotted #46617f}
 #title .langtoggle{position:absolute;top:16px;right:16px;z-index:3;display:flex;gap:4px}
 
-/* --- BGM widget (YouTube embed + attribution) --- */
-#bgm{
-  position:fixed;right:14px;bottom:14px;z-index:210;width:246px;
-  background:rgba(8,16,32,.92);border:1px solid var(--edge-2);border-radius:14px;
-  box-shadow:var(--sh-2);backdrop-filter:blur(14px);overflow:hidden;
-  font-size:.98em;transition:transform var(--t-mid),opacity var(--t-mid)
-}
-#bgm.hidden{transform:translateY(140%);opacity:0;pointer-events:none}
-#bgm .bgm-head{
-  display:flex;align-items:center;gap:7px;padding:8px 10px;cursor:pointer;
-  border-bottom:1px solid var(--edge)
-}
-#bgm .bgm-head b{flex:1;font-size:.78em;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
-#bgm .bgm-head .eq{display:flex;gap:2px;align-items:flex-end;height:12px}
-#bgm .bgm-head .eq i{width:3px;background:var(--accent);border-radius:1px;height:4px}
-#bgm.on .bgm-head .eq i{animation:eqb .9s ease-in-out infinite}
-#bgm.on .bgm-head .eq i:nth-child(2){animation-delay:.15s}
-#bgm.on .bgm-head .eq i:nth-child(3){animation-delay:.3s}
-@keyframes eqb{0%,100%{height:3px}50%{height:12px}}
-#bgm .bgm-body{padding:9px 10px 10px}
-#bgm.collapsed .bgm-body{display:none}
-#bgm .yt{width:100%;aspect-ratio:16/9;border:0;border-radius:9px;background:#000;display:block}
-#bgm .bgm-credit{margin-top:8px;line-height:1.45}
-#bgm .bgm-credit b{display:block;font-size:.76em;color:var(--ink)}
-#bgm .bgm-credit span{display:block;font-size:.7em;color:var(--ink-3)}
-#bgm .bgm-credit a{display:inline-block;margin-top:4px;font-size:.7em;color:var(--info);text-decoration:none;border-bottom:1px dotted currentColor}
-#bgm .bgm-credit a:hover{color:var(--accent-2)}
-#bgm .bgm-note{margin-top:6px;font-size:.66em;color:var(--ink-3);line-height:1.4}
-#bgm .btn{width:100%;margin-top:2px}
-
 /* globe pin labels */
 .globe-label{
   transform:translate(-50%,-100%);
@@ -589,7 +559,14 @@ table.ledger .cid{font-family:var(--mono);font-size:.82em;color:var(--ink-3)}
 .globe-label.open:hover{transform:translate(-50%,-100%) scale(1.08)}
 .globe-label.locked{opacity:.62}
 .globe-label.locked:hover{opacity:.9}
-#title.globe-mode{pointer-events:none}
+#title.globe-mode{
+  pointer-events:none;
+  /* the globe is rendered on the canvas *behind* this overlay, so the
+     full-screen gradient has to go — only a left-hand scrim remains so the
+     text rail stays readable on top of it */
+  background:linear-gradient(90deg,
+    rgba(4,10,24,.90) 0%, rgba(4,10,24,.72) 22%, rgba(4,10,24,.28) 40%, rgba(4,10,24,0) 56%);
+}
 #title.globe-mode .tinner{
   position:absolute;left:max(26px,5vw);top:50%;transform:translateY(-50%);
   align-items:flex-start;text-align:left;max-width:min(430px,44vw);pointer-events:auto
@@ -604,9 +581,11 @@ table.ledger .cid{font-family:var(--mono);font-size:.82em;color:var(--ink-3)}
   display:flex;gap:14px;align-items:center;text-shadow:0 2px 8px #000
 }
 @media (max-width:860px){
+  #title.globe-mode{background:linear-gradient(180deg,rgba(4,10,24,0) 0%,rgba(4,10,24,.55) 55%,rgba(4,10,24,.9) 100%);
+    justify-content:flex-end}
   #title.globe-mode .tinner{position:relative;left:auto;top:auto;transform:none;
     align-items:center;text-align:center;max-width:min(560px,92vw);
-    background:rgba(4,10,22,.55);border-radius:20px;padding:18px}
+    background:rgba(4,10,22,.62);border-radius:20px;padding:18px;margin-bottom:34px}
   #title.globe-mode .blurb{max-width:none}
 }
 
@@ -2580,7 +2559,7 @@ const HEAT_W = 96, HEAT_H = 72;
    =========================================================================== */
 const SETTINGS = {
   master:0.8, music:0.55, sfx:0.8, ambience:0.6,
-  vignette:true, grain:true, patterns:true, reduceMotion:false, ytbgm:false,
+  vignette:true, grain:true, patterns:true, reduceMotion:false,
   hicontrast:false, colorblind:'off', uiScale:1,
   quality:'high', edgeScroll:true, invertY:false, sens:1.0,
   showFps:false, autoPause:true, tutorial:true, camShake:true,
@@ -5525,7 +5504,7 @@ const AUDIO = {
   ctx:null, ready:false, scene:'menu',
   master:null, musicG:null, sfxG:null, ambG:null,
   noiseBuf:null, waveSrc:null, crowdSrc:null, crowdFilt:null, crowdG:null,
-  nextNote:0, step:0, bpm:96, timer:null, chordI:0,
+  nextNote:0, step:0, bpm:118, timer:null, chordI:0,
   init(){
     if(this.ctx) return;
     const AC = window.AudioContext || window.webkitAudioContext;
@@ -5567,7 +5546,7 @@ const AUDIO = {
     if(!this.ctx) return;
     const m = SETTINGS.master;
     this.master.gain.value = m;
-    this.musicG.gain.value = SETTINGS.music*0.55;
+    this.musicG.gain.value = SETTINGS.music*0.72;
     this.sfxG.gain.value = SETTINGS.sfx*0.9;
     this.ambG.gain.value = SETTINGS.ambience*0.5;
   },
@@ -5665,7 +5644,11 @@ const AUDIO = {
       case 'grade':   [523,659,784,1046,1318].forEach((f,i)=>setTimeout(()=>this.tone(f,0.6,'triangle',0.14,0.01), i*110)); break;
     }
   },
-  /* --- procedural music scheduler --- */
+  /* =====================================================================
+     Festival score. Bright major-key groove with a steel-drum lead, a real
+     melody hook, claps and shaker. Every note is synthesised on the fly;
+     there is no sample data anywhere in the file.
+     ===================================================================== */
   schedule(){
     if(!this.ctx || this.scene === 'off') return;
     const c = this.ctx;
@@ -5677,78 +5660,163 @@ const AUDIO = {
       this.step++;
     }
   },
+  /* steel-drum / marimba bell: sine carrier plus a bright inharmonic partial */
+  bell(t, f, dur, vol, bright){
+    const c = this.ctx;
+    const g = c.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(Math.max(0.0003, vol), t+0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, t+dur);
+    const o1 = c.createOscillator(); o1.type='sine'; o1.frequency.value=f;
+    const o2 = c.createOscillator(); o2.type='sine'; o2.frequency.value=f*3.01;
+    const g2 = c.createGain(); g2.gain.value = (bright===undefined?0.34:bright);
+    const o3 = c.createOscillator(); o3.type='triangle'; o3.frequency.value=f*2;
+    const g3 = c.createGain(); g3.gain.value = 0.20;
+    o1.connect(g); o2.connect(g2); g2.connect(g); o3.connect(g3); g3.connect(g);
+    g.connect(this.musicG); g.connect(this.verb);
+    o1.start(t); o2.start(t); o3.start(t);
+    o1.stop(t+dur+0.02); o2.stop(t+dur+0.02); o3.stop(t+dur+0.02);
+  },
+  /* short brass-ish stab for accents */
+  stab(t, f, dur, vol){
+    const c = this.ctx;
+    const o = c.createOscillator(); o.type='sawtooth'; o.frequency.value=f;
+    const fl = c.createBiquadFilter(); fl.type='lowpass';
+    fl.frequency.setValueAtTime(f*7, t); fl.frequency.exponentialRampToValueAtTime(f*2.0, t+dur);
+    fl.Q.value = 6;
+    const g = c.createGain();
+    g.gain.setValueAtTime(0.0001,t);
+    g.gain.exponentialRampToValueAtTime(vol, t+0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t+dur);
+    o.connect(fl); fl.connect(g); g.connect(this.musicG); g.connect(this.verb);
+    o.start(t); o.stop(t+dur+0.02);
+  },
   playStep(t){
     const S = this.scene;
     if(S === 'off' || !this.musicG) return;
     const c = this.ctx;
-    const PROG = {
-      menu:    [[0,4,7,11],[ -3,2,5,9],[ -5,0,4,7],[ -1,2,7,11]],
-      live:    [[0,4,7],[5,9,12],[7,11,14],[2,5,9]],
-      night:   [[0,3,7],[-2,3,5],[-4,0,3],[-5,-1,2]],
-      finale:  [[0,4,7,12],[5,9,12,16],[7,11,14,19],[0,4,7,12]],
-      report:  [[0,4,7],[-3,0,4],[-5,-1,2],[-1,2,7]],
-      minigame:[[0,3,7],[2,5,9],[3,7,10],[-2,2,5]],
-    }[S] || [[0,4,7]];
-    const ROOT = { menu:55, live:58, night:53, finale:58, report:55, minigame:60 }[S] || 57;
-    const bar = Math.floor(this.step/8) % PROG.length;
-    const chord = PROG[bar];
-    const b = this.step % 8;
-    const midi = m => 440*Math.pow(2,(m-69)/12);
-    const vol = { menu:0.5, live:0.42, night:0.40, finale:0.72, report:0.44, minigame:0.55 }[S] || 0.45;
+    /* one chord per bar, with a 32-step melody phrase riding over them */
+    const SC = {
+      menu:    { root:60, prog:[[0,4,7,11],[-3,0,4,9],[-5,-1,2,7],[2,5,9,12]], vol:0.62,
+                 mel:[12,null,14,16,null,14,12,null, 11,null,9,null,7,null,null,null,
+                      9,null,11,12,null,11,9,null,  7,null,9,11,null,null,null,null] },
+      live:    { root:60, prog:[[0,4,7],[7,11,14],[9,12,16],[5,9,12]], vol:0.70,
+                 mel:[12,null,14,16,null,14,12,null, 11,null,9,11,null,14,null,null,
+                      16,null,14,12,null,9,12,null,  7,9,11,12,null,null,null,null] },
+      night:   { root:57, prog:[[0,4,7],[-3,0,4],[5,9,12],[2,5,9]], vol:0.52,
+                 mel:[7,null,null,9,null,null,12,null, 11,null,null,9,null,null,null,null,
+                      12,null,null,14,null,12,null,null, 9,null,7,null,null,null,null,null] },
+      finale:  { root:60, prog:[[0,4,7,12],[5,9,12,17],[7,11,14,19],[0,4,7,12]], vol:0.92,
+                 mel:[19,null,17,16,null,17,19,null, 16,null,14,12,null,14,16,null,
+                      19,21,19,17,null,16,14,null,  12,14,16,19,null,null,null,null] },
+      minigame:{ root:62, prog:[[0,3,7],[5,8,12],[7,10,14],[3,7,10]], vol:0.76,
+                 mel:[12,12,null,15,null,14,12,null, 10,null,12,null,15,null,null,null,
+                      17,null,15,14,null,12,10,null, 12,null,null,null,null,null,null,null] },
+      report:  { root:60, prog:[[0,4,7],[-3,0,4],[5,9,12],[-1,2,7]], vol:0.55,
+                 mel:[null,null,7,null,null,9,null,null, 12,null,null,null,null,null,null,null,
+                      null,null,11,null,null,9,null,null, 7,null,null,null,null,null,null,null] },
+    }[S] || { root:60, prog:[[0,4,7]], vol:0.5, mel:[] };
 
-    /* pad on bar start */
+    const midi = m => 440*Math.pow(2,(m-69)/12);
+    const bar = Math.floor(this.step/8) % SC.prog.length;
+    const chord = SC.prog[bar];
+    const b = this.step % 8;
+    const ph = this.step % 32;
+    const vol = SC.vol;
+    const busy = (S==='live' || S==='finale' || S==='minigame' || S==='menu');
+
+    /* --- pad: bright filtered saw stack, once per bar --- */
     if(b === 0){
       for(let i=0;i<chord.length;i++){
-        const f = midi(ROOT+12+chord[i]);
-        const o = c.createOscillator(); o.type='sawtooth'; o.frequency.value=f; o.detune.value = (i-1)*7;
-        const fl = c.createBiquadFilter(); fl.type='lowpass'; fl.frequency.setValueAtTime(500,t);
-        fl.frequency.linearRampToValueAtTime(1500, t+0.9);
+        const f = midi(SC.root+12+chord[i]);
+        const o = c.createOscillator(); o.type='sawtooth'; o.frequency.value=f; o.detune.value=(i-1)*9;
+        const fl = c.createBiquadFilter(); fl.type='lowpass';
+        fl.frequency.setValueAtTime(700,t); fl.frequency.linearRampToValueAtTime(2600,t+0.7);
         const g = c.createGain();
         g.gain.setValueAtTime(0.0001,t);
-        g.gain.linearRampToValueAtTime(0.030*vol, t+0.35);
-        g.gain.linearRampToValueAtTime(0.0001, t+2.1);
+        g.gain.linearRampToValueAtTime(0.026*vol, t+0.20);
+        g.gain.linearRampToValueAtTime(0.0001, t+2.0);
         o.connect(fl); fl.connect(g); g.connect(this.musicG); g.connect(this.verb);
-        o.start(t); o.stop(t+2.2);
+        o.start(t); o.stop(t+2.1);
+      }
+      if(S==='finale' || S==='live') this.stab(t, midi(SC.root+chord[0]), 0.34, 0.055*vol);
+    }
+    /* --- bouncy bass: root, octave, fifth --- */
+    {
+      const patt = [0,null,12,null, 7,null,12,null];
+      const nb = patt[b];
+      if(nb !== null){
+        const f = midi(SC.root-12+chord[0]+nb);
+        const o = c.createOscillator(); o.type='triangle'; o.frequency.value=f;
+        const o2 = c.createOscillator(); o2.type='sine'; o2.frequency.value=f*0.5;
+        const g = c.createGain();
+        g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(0.115*vol,t+0.015);
+        g.gain.exponentialRampToValueAtTime(0.0001,t+0.34);
+        const g2 = c.createGain(); g2.gain.value=0.5;
+        o.connect(g); o2.connect(g2); g2.connect(g); g.connect(this.musicG);
+        o.start(t); o2.start(t); o.stop(t+0.36); o2.stop(t+0.36);
       }
     }
-    /* bass */
-    if(b%2===0){
-      const f = midi(ROOT-12+chord[0]);
-      const o = c.createOscillator(); o.type='triangle'; o.frequency.value=f;
-      const g = c.createGain();
-      g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(0.10*vol,t+0.02);
-      g.gain.exponentialRampToValueAtTime(0.0001,t+0.46);
-      o.connect(g); g.connect(this.musicG);
-      o.start(t); o.stop(t+0.5);
+    /* --- steel-drum comping --- */
+    const comp = { menu:[0,1,0,1,0,1,0,1], live:[1,0,1,1,0,1,1,0], night:[1,0,0,1,0,0,1,0],
+                   finale:[1,1,1,1,1,1,1,1], minigame:[1,0,1,0,1,1,0,1], report:[1,0,0,0,1,0,0,0] }[S]
+                || [1,0,1,0,1,0,1,0];
+    if(comp[b]){
+      const note = chord[(this.step*2+b) % chord.length];
+      this.bell(t, midi(SC.root+12+note), 0.50, 0.048*vol, 0.30);
     }
-    /* marimba arp */
-    const arpPat = { menu:[1,0,1,1,0,1,1,0], live:[1,1,0,1,1,0,1,1], night:[1,0,0,1,0,1,0,0],
-                     finale:[1,1,1,1,1,1,1,1], report:[1,0,1,0,1,0,1,0], minigame:[1,1,1,0,1,1,0,1] }[S] || [1,0,1,0,1,0,1,0];
-    if(arpPat[b]){
-      const note = chord[(this.step*3+b) % chord.length] + (b>=4?12:0);
-      const f = midi(ROOT+24+note);
-      const o = c.createOscillator(); o.type='sine'; o.frequency.value=f;
-      const o2 = c.createOscillator(); o2.type='triangle'; o2.frequency.value=f*2.01;
-      const g = c.createGain();
-      g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(0.055*vol,t+0.005);
-      g.gain.exponentialRampToValueAtTime(0.0001,t+0.42);
-      const g2 = c.createGain(); g2.gain.value = 0.3;
-      o.connect(g); o2.connect(g2); g2.connect(g); g.connect(this.musicG); g.connect(this.verb);
-      o.start(t); o.stop(t+0.45); o2.start(t); o2.stop(t+0.45);
+    /* --- melody hook --- */
+    if(SC.mel && SC.mel.length){
+      const m = SC.mel[ph];
+      if(m !== null && m !== undefined){
+        this.bell(t, midi(SC.root+12+m), 0.62, 0.085*vol, 0.55);
+        if(S==='finale') this.bell(t, midi(SC.root+24+m), 0.42, 0.030*vol, 0.7);
+      }
     }
-    /* percussion */
-    if(S !== 'night' && S !== 'report'){
-      if(b===0 || b===4){ this.kick(t, vol); }
-      if(b===2 || b===6){ this.snare(t, vol*0.8); }
-      if(S==='finale' || S==='minigame' || S==='live'){ this.hat(t, vol*(b%2?0.5:0.8)); }
+    /* --- percussion --- */
+    if(S !== 'report'){
+      const kick = [1,0,0,1,0,0,1,0];
+      if(kick[b]) this.kick(t, vol);
+      if(b===2 || b===6) this.clap(t, vol*(S==='night'?0.5:1));
+      if(busy){
+        this.shaker(t, vol*(b%2?0.55:0.95));
+        this.shaker(t + (60/this.bpm/4), vol*0.4);
+      } else if(b%2===0) this.shaker(t, vol*0.5);
+      if(S==='finale' || S==='minigame') this.hat(t, vol*(b%2?0.4:0.7));
     }
   },
   kick(t, v){
     const c=this.ctx;
     const o=c.createOscillator(); o.type='sine';
-    o.frequency.setValueAtTime(140,t); o.frequency.exponentialRampToValueAtTime(42,t+0.13);
-    const g=c.createGain(); g.gain.setValueAtTime(0.30*v,t); g.gain.exponentialRampToValueAtTime(0.0001,t+0.24);
-    o.connect(g); g.connect(this.musicG); o.start(t); o.stop(t+0.26);
+    o.frequency.setValueAtTime(165,t); o.frequency.exponentialRampToValueAtTime(45,t+0.11);
+    const g=c.createGain(); g.gain.setValueAtTime(0.34*v,t); g.gain.exponentialRampToValueAtTime(0.0001,t+0.26);
+    o.connect(g); g.connect(this.musicG); o.start(t); o.stop(t+0.28);
+    const s=c.createBufferSource(); s.buffer=this.noiseBuf;
+    const f=c.createBiquadFilter(); f.type='lowpass'; f.frequency.value=900;
+    const g2=c.createGain(); g2.gain.setValueAtTime(0.07*v,t); g2.gain.exponentialRampToValueAtTime(0.0001,t+0.04);
+    s.connect(f); f.connect(g2); g2.connect(this.musicG); s.start(t); s.stop(t+0.05);
+  },
+  /* hand clap: three quick bursts — the festival backbeat */
+  clap(t, v){
+    const c=this.ctx;
+    for(let i=0;i<3;i++){
+      const ts = t + i*0.009;
+      const s=c.createBufferSource(); s.buffer=this.noiseBuf; s.playbackRate.value=1.4+i*0.1;
+      const f=c.createBiquadFilter(); f.type='bandpass'; f.frequency.value=1550; f.Q.value=1.5;
+      const g=c.createGain();
+      g.gain.setValueAtTime(0.10*v*(i===2?1.25:0.7),ts);
+      g.gain.exponentialRampToValueAtTime(0.0001, ts+(i===2?0.16:0.05));
+      s.connect(f); f.connect(g); g.connect(this.musicG); g.connect(this.verb);
+      s.start(ts); s.stop(ts+0.18);
+    }
+  },
+  shaker(t, v){
+    const c=this.ctx;
+    const s=c.createBufferSource(); s.buffer=this.noiseBuf; s.playbackRate.value=3.1;
+    const f=c.createBiquadFilter(); f.type='highpass'; f.frequency.value=6200;
+    const g=c.createGain(); g.gain.setValueAtTime(0.040*v,t); g.gain.exponentialRampToValueAtTime(0.0001,t+0.045);
+    s.connect(f); f.connect(g); g.connect(this.musicG);
+    s.start(t); s.stop(t+0.06);
   },
   snare(t, v){
     const c=this.ctx;
@@ -5761,8 +5829,8 @@ const AUDIO = {
   hat(t, v){
     const c=this.ctx;
     const s=c.createBufferSource(); s.buffer=this.noiseBuf; s.playbackRate.value=2.4;
-    const f=c.createBiquadFilter(); f.type='highpass'; f.frequency.value=7200;
-    const g=c.createGain(); g.gain.setValueAtTime(0.055*v,t); g.gain.exponentialRampToValueAtTime(0.0001,t+0.06);
+    const f=c.createBiquadFilter(); f.type='highpass'; f.frequency.value=7600;
+    const g=c.createGain(); g.gain.setValueAtTime(0.05*v,t); g.gain.exponentialRampToValueAtTime(0.0001,t+0.055);
     s.connect(f); f.connect(g); g.connect(this.musicG);
     s.start(t); s.stop(t+0.07);
   }
@@ -6099,8 +6167,10 @@ const CAM = {
     if(fx||fz){
       const l=Math.hypot(fx,fz); fx/=l; fz/=l;
       const c=Math.cos(this.gyaw), s=Math.sin(this.gyaw);
-      let dx = (fx*c + fz*s)*sp*dt;
-      let dz = (-fx*s + fz*c)*sp*dt;
+      /* forward = (sin yaw, cos yaw); camera right = cross(up, back) = (-cos yaw, sin yaw).
+         The old basis used (cos yaw, -sin yaw), i.e. exactly -right, so A and D were swapped. */
+      let dx = (fz*s - fx*c)*sp*dt;
+      let dz = (fz*c + fx*s)*sp*dt;
       /* collide */
       const R = 0.42;
       if(NAV.free(NAV.col(this.gx+dx+sign(dx)*R), NAV.row(this.gz))) this.gx += dx;
@@ -7907,14 +7977,6 @@ Object.assign(UI, {
           b.appendChild(el('div',{class:'switchrow'}, el('div',{class:'lb'}, el('b',{text:lab}), el('span',{text:sub})), g));
         };
         sec(T('오디오','Audio'));
-        b.appendChild(el('div',{class:'infobox',style:{marginBottom:'8px'},html:
-          '🎵 '+T('배경 음악','Background music')+': <b>'+BGM.title+'</b> — '+BGM.author
-          +'<br><a href="'+BGM.url+'" target="_blank" rel="noopener noreferrer" style="color:var(--info)">'
-          +T('출처 · YouTube에서 보기 ↗','Source · watch on YouTube ↗')+'</a><br>'
-          +'<span class="muted" style="font-size:.9em">'
-          +T('음원은 파일에 포함되어 있지 않으며 YouTube 공식 임베드로 재생됩니다. 기본값은 내장 절차적 음악입니다.',
-             'The track is not bundled; it streams via YouTube’s official embed. The built-in procedural score is the default.')
-          +'</span>'}));
         slider(T('전체 볼륨','Master'),'master',0,1,0.01);
         slider(T('음악','Music'),'music',0,1,0.01);
         slider(T('효과음','SFX'),'sfx',0,1,0.01);
@@ -7993,11 +8055,8 @@ Object.assign(UI, {
         b.appendChild(rules);
         sec(T('크레딧','Credits'));
         b.appendChild(el('div',{class:'infobox',html:
-          '🎵 '+T('배경 음악','Background music')+' — <b>'+BGM.title+'</b> / '+BGM.author
-          +' &nbsp;<a href="'+BGM.url+'" target="_blank" rel="noopener noreferrer" style="color:var(--info)">'
-          +T('출처 ↗','Source ↗')+'</a><br>'
-          +T('그 외 모든 메시·텍스처·효과음·내장 음악은 실행 시 절차적으로 생성됩니다. 외부 에셋 파일은 없습니다.',
-             'Every other mesh, texture, sound effect and the built-in score are generated procedurally at runtime. There are no external asset files.')}));
+          T('모든 메시·텍스처·효과음·배경 음악·지구본은 실행 시 절차적으로 생성됩니다. 외부 에셋 파일이 하나도 없습니다.',
+            'Every mesh, texture, sound effect, the score and the globe are generated procedurally at runtime. There is not a single external asset file.')}));
         f.appendChild(this.sp());
         f.appendChild(el('button',{class:'btn pri',text:T('닫기','Close'),onclick:()=>this.closeModal()}));
       }
@@ -8029,7 +8088,6 @@ const FINALE = {
     W.gold += 0; /* tickets already counted; finale crowd is a visual encore */
     W.revenueToday = W.revenueToday;
     $('#finaleui').classList.add('on');
-    BGM.show(false);
     $('#ui').style.opacity = '0';
     $('#ui').style.pointerEvents = 'none';
     SCENE.hide();
@@ -8122,7 +8180,6 @@ const FINALE = {
     this.active = false;
     RD.aberr = 0; RD.flash = 0;
     $('#finaleui').classList.remove('on');
-    BGM.show(true);
     $('#finaleui .fban').classList.remove('on');
     $('#ui').style.opacity = '';
     $('#ui').style.pointerEvents = '';
@@ -8156,7 +8213,6 @@ const MINI = {
     this.obstacles.length = 0; this.pickups.length = 0; this.nextSpawn = 0;
     this.rng = makeRNG(W.seed + W.day*977);
     $('#mghud').classList.add('on');
-    BGM.show(false);
     $('#ui').style.opacity = '0.15';
     $('#ui').style.pointerEvents = 'none';
     SCENE.hide();
@@ -8174,7 +8230,6 @@ const MINI = {
     if(!this.active) return;
     this.active = false;
     $('#mghud').classList.remove('on');
-    BGM.show(true);
     $('#mgcount').classList.add('hide');
     $('#ui').style.opacity = '';
     $('#ui').style.pointerEvents = '';
@@ -8617,88 +8672,6 @@ function saveBest(R){
 function loadBest(){ try{ return JSON.parse(localStorage.getItem('ff_best')); }catch(e){ return null; } }
 function metaGems(){ try{ return (JSON.parse(localStorage.getItem('ff_meta')||'{}').gems)||0; }catch(e){ return 0; } }
 /* ===========================================================================
-   38a. BACKGROUND MUSIC
-   The track is a third-party work, so it is NOT bundled — it plays through
-   YouTube's official embed, which keeps playback, attribution and revenue with
-   the creator. The player is deliberately visible: hidden audio-only playback
-   of a YouTube embed is against YouTube's terms. The built-in procedural score
-   stays the default so the game still works offline.
-   =========================================================================== */
-const BGM = {
-  id:'_KyM87BO-Ng',
-  title:'첫 번째 게임 OST - A New Adventure',
-  author:'RYU Russell 러셀',
-  authorUrl:'https://www.youtube.com/@ryurussell',
-  get url(){ return 'https://www.youtube.com/watch?v='+this.id; },
-  root:null, frame:null, on:false, collapsed:false,
-  init(){
-    if(this.root) return;
-    this.on = !!SETTINGS.ytbgm;
-    const r = el('div',{id:'bgm', class:'hidden'});
-    const head = el('div',{class:'bgm-head', onclick:()=>this.toggleCollapse()},
-      el('span',{class:'eq'}, el('i'), el('i'), el('i')),
-      el('b',{text:T('배경 음악','Background music')}),
-      el('span',{class:'muted',id:'bgmchev',text:'▾',style:{fontSize:'.8em'}}));
-    r.appendChild(head);
-    const body = el('div',{class:'bgm-body', id:'bgmbody'});
-    r.appendChild(body);
-    document.body.appendChild(r);
-    this.root = r; this.body = body;
-    this.render();
-  },
-  render(){
-    const b = this.body; b.innerHTML = '';
-    if(this.on){
-      this.frame = el('iframe',{ class:'yt',
-        src:'https://www.youtube.com/embed/'+this.id+'?autoplay=1&loop=1&playlist='+this.id+'&rel=0&modestbranding=1',
-        title:this.title, allow:'autoplay; encrypted-media', referrerpolicy:'strict-origin-when-cross-origin',
-        allowfullscreen:'' });
-      b.appendChild(this.frame);
-    } else {
-      this.frame = null;
-      b.appendChild(el('button',{class:'btn sm pri wide', html:'▶ '+T('YouTube 음악 켜기','Play YouTube track'),
-        onclick:()=>this.enable()}));
-    }
-    b.appendChild(el('div',{class:'bgm-credit'},
-      el('b',{text:this.title}),
-      el('span',{text:this.author}),
-      el('a',{href:this.url, target:'_blank', rel:'noopener noreferrer',
-              text:T('출처 · YouTube에서 보기 ↗','Source · watch on YouTube ↗')})));
-    if(this.on){
-      b.appendChild(el('button',{class:'btn sm wide', style:{marginTop:'7px'},
-        html:'⏹ '+T('끄고 기본 음악으로','Stop · back to built-in score'), onclick:()=>this.disable()}));
-    } else {
-      b.appendChild(el('div',{class:'bgm-note',
-        text:T('켜면 내장 음악은 자동으로 꺼집니다. 네트워크가 필요합니다.',
-               'Enabling this mutes the built-in score. Requires a network connection.')}));
-    }
-  },
-  enable(){
-    this.on = true; SETTINGS.ytbgm = true;
-    this._prevMusic = SETTINGS.music;
-    SETTINGS.music = 0; SETTINGS.apply();
-    this.root.classList.add('on');
-    this.collapsed = false; this.root.classList.remove('collapsed');
-    this.render();
-    FX.pushToast('🎵 '+this.title+' — '+this.author,'ok',4200);
-  },
-  disable(){
-    this.on = false; SETTINGS.ytbgm = false;
-    SETTINGS.music = (this._prevMusic===undefined || this._prevMusic===0) ? 0.55 : this._prevMusic;
-    SETTINGS.apply();
-    this.root.classList.remove('on');
-    this.render();
-  },
-  toggleCollapse(){
-    this.collapsed = !this.collapsed;
-    this.root.classList.toggle('collapsed', this.collapsed);
-    const c = document.getElementById('bgmchev');
-    if(c) c.textContent = this.collapsed ? '▸' : '▾';
-  },
-  show(v){ if(this.root) this.root.classList.toggle('hidden', !v); }
-};
-
-/* ===========================================================================
    38b. GLOBE — start-screen world map
    Land is a 3-degree lat/lon mask given as [latBandCentre, [[lon0,lon1],...]].
    A tile mask is far easier to keep geographically honest than hand-drawn
@@ -8849,7 +8822,6 @@ const GLOBE = {
     this.labelRoot.style.display = 'block';
     this.buildLabels();
     this.attach();
-    BGM.show(true);
     if(!document.getElementById('globehint')){
       document.body.appendChild(el('div',{id:'globehint',html:
         '<span>🖱 '+T('드래그로 지구본 회전','Drag to spin')+'</span>'
@@ -9124,7 +9096,6 @@ function openAtlas(){
 }
 function startNewGame(){
   GLOBE.stop();
-  BGM.show(true);
   W.reset();
   FX.clear();
   BUILD.mode = null; BUILD.selected = null;
@@ -9443,7 +9414,6 @@ function boot(){
     RD.heatArea = HEAT.area;
     BOOT.set(0.90, 'interface');
     UI.init();
-    BGM.init();
     addEventListener('resize', ()=>{ RD.resize(); UI.rebuild(); });
     document.addEventListener('visibilitychange', ()=>{
       if(document.hidden && SETTINGS.autoPause && W.stage==='live' && !W.paused){

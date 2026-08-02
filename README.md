@@ -37,7 +37,7 @@ Then visit `http://localhost:5173`.
 | Modes | Overview (RTS camera) and Ground (first-person, pointer-lock) — **Ground is strictly optional and carries no penalty** |
 | Minigame | 다대포 서핑 — 52 s wave run with a steering-vs-balance tension |
 | Finale | 5 purchase tiers driving a 96 s cinematic with up to 140 procedural fireworks shells |
-| Audio | Entirely synthesised via WebAudio — procedural score that shifts by scene, plus sea, crowd and SFX. An optional YouTube-embedded track is available (see Credits) |
+| Audio | Entirely synthesised via WebAudio — an upbeat festival score that shifts by scene, plus sea, crowd and SFX |
 | Accessibility | Colour-blind palettes, pattern overlays on all heat maps, high-contrast UI, reduced-motion, UI scaling, full KO/EN localisation |
 
 ---
@@ -93,20 +93,9 @@ and set *Publish Directory* to `.`.
 
 ## Credits
 
-**Background music** — 「첫 번째 게임 OST - A New Adventure」 by **RYU Russell 러셀**
-Source: https://www.youtube.com/watch?v=_KyM87BO-Ng
-Channel: https://www.youtube.com/@ryurussell
-
-The track is **not bundled** with this repository. It plays through YouTube's official
-embed, so playback, attribution and revenue stay with the creator, and the player is
-kept visible rather than hidden. It is **off by default** — the game ships with a
-built-in procedural score so it runs fully offline. Enable it from the music widget in
-the corner, or see Settings → Audio.
-
-Everything else — every mesh, texture, sound effect, the built-in score and the globe —
-is generated procedurally at runtime. There are no external asset files.
+Every mesh, texture, sound effect, the music and the globe are generated procedurally at
+runtime. There is not a single external asset file — no images, no audio, no fonts, no CDN.
 
 ---
 
-MIT licensed, excluding the third-party track credited above, which remains the property
-of its creator. Fonts fall back to system stacks.
+MIT licensed. Fonts fall back to system stacks.
