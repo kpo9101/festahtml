@@ -534,6 +534,32 @@ table.ledger .cid{font-family:var(--mono);font-size:.82em;color:var(--ink-3)}
 #title .foot a{color:#7fa5cd;text-decoration:none;border-bottom:1px dotted #46617f}
 #title .langtoggle{position:absolute;top:16px;right:16px;z-index:3;display:flex;gap:4px}
 
+/* --- background music widget --- */
+#bgm{
+  position:fixed;right:14px;bottom:14px;z-index:210;width:214px;
+  background:rgba(8,16,32,.90);border:1px solid var(--edge-2);border-radius:14px;
+  box-shadow:var(--sh-2);backdrop-filter:blur(14px);overflow:hidden;
+  transition:transform var(--t-mid),opacity var(--t-mid)
+}
+#bgm.hidden{transform:translateY(150%);opacity:0;pointer-events:none}
+#bgm .bgm-head{display:flex;align-items:center;gap:7px;padding:7px 10px;cursor:pointer}
+#bgm .bgm-head b{flex:1;font-size:.72em;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3)}
+#bgm .eq{display:flex;gap:2px;align-items:flex-end;height:11px}
+#bgm .eq i{width:3px;background:var(--accent);border-radius:1px;height:3px}
+#bgm.playing .eq i{animation:eqb .9s ease-in-out infinite}
+#bgm.playing .eq i:nth-child(2){animation-delay:.15s}
+#bgm.playing .eq i:nth-child(3){animation-delay:.3s}
+@keyframes eqb{0%,100%{height:3px}50%{height:11px}}
+#bgm .bgm-body{padding:0 10px 10px}
+#bgm.collapsed .bgm-body{display:none}
+#bgm .yt{width:100%;aspect-ratio:16/9;border:0;border-radius:9px;background:#000;display:block}
+#bgm .cr{margin-top:7px;line-height:1.42}
+#bgm .cr b{display:block;font-size:.72em;color:var(--ink)}
+#bgm .cr span{display:block;font-size:.68em;color:var(--ink-3)}
+#bgm .cr a{display:inline-block;margin-top:3px;font-size:.68em;color:var(--info);
+  text-decoration:none;border-bottom:1px dotted currentColor}
+#bgm .cr a:hover{color:var(--accent-2)}
+
 /* globe pin labels */
 .globe-label{
   transform:translate(-50%,-100%);
@@ -2559,7 +2585,7 @@ const HEAT_W = 96, HEAT_H = 72;
    =========================================================================== */
 const SETTINGS = {
   master:0.8, music:0.55, sfx:0.8, ambience:0.6,
-  vignette:true, grain:true, patterns:true, reduceMotion:false,
+  vignette:true, grain:true, patterns:true, reduceMotion:false, bgmSource:'youtube',
   hicontrast:false, colorblind:'off', uiScale:1,
   quality:'high', edgeScroll:true, invertY:false, sens:1.0,
   showFps:false, autoPause:true, tutorial:true, camShake:true,
@@ -2584,6 +2610,7 @@ const SETTINGS = {
     QUALITY.apply(this.quality);
     if(RD.progs && RD.progs.inst) RD.resize();
     if(typeof AUDIO !== 'undefined' && AUDIO.setVolumes) AUDIO.setVolumes();
+    if(typeof BGM !== 'undefined' && BGM.applyVolume) BGM.applyVolume();
     this.save();
   }
 };
@@ -5555,7 +5582,7 @@ const AUDIO = {
     if(!this.ctx) return;
     const m = SETTINGS.master;
     this.master.gain.value = m;
-    this.musicG.gain.value = SETTINGS.music*0.72;
+    this.musicG.gain.value = (SETTINGS.bgmSource === 'youtube') ? 0 : SETTINGS.music*0.72;
     this.sfxG.gain.value = SETTINGS.sfx*0.9;
     this.ambG.gain.value = SETTINGS.ambience*0.5;
   },
@@ -8015,6 +8042,19 @@ Object.assign(UI, {
           b.appendChild(el('div',{class:'switchrow'}, el('div',{class:'lb'}, el('b',{text:lab}), el('span',{text:sub})), g));
         };
         sec(T('오디오','Audio'));
+        seg(T('배경 음악','Background music'),
+            T('YouTube 트랙 또는 내장 절차적 음악','The YouTube track, or the built-in procedural score'),
+            'bgmSource',
+            [['youtube','YouTube'],['builtin',T('내장','Built-in')],['off',T('끄기','Off')]],
+            ()=>BGM.setSource(SETTINGS.bgmSource));
+        b.appendChild(el('div',{class:'infobox',style:{margin:'2px 0 10px'},html:
+          '🎵 <b>'+BGM.title+'</b> — '+BGM.author
+          +' &nbsp;<a href="'+BGM.url+'" target="_blank" rel="noopener noreferrer" style="color:var(--info)">'
+          +T('출처 · YouTube ↗','Source · YouTube ↗')+'</a><br>'
+          +'<span class="muted" style="font-size:.9em">'
+          +T('음원은 파일에 포함되어 있지 않으며 YouTube 공식 임베드로 재생됩니다. 아래 <b>음악</b> 슬라이더로 볼륨을 조절합니다.',
+             'The track is not bundled; it streams via YouTube’s official embed. Use the <b>Music</b> slider below for its volume.')
+          +'</span>'}));
         slider(T('전체 볼륨','Master'),'master',0,1,0.01);
         slider(T('음악','Music'),'music',0,1,0.01);
         slider(T('효과음','SFX'),'sfx',0,1,0.01);
@@ -8148,8 +8188,11 @@ Object.assign(UI, {
         b.appendChild(rules);
         sec(T('크레딧','Credits'));
         b.appendChild(el('div',{class:'infobox',html:
-          T('모든 메시·텍스처·효과음·배경 음악·지구본은 실행 시 절차적으로 생성됩니다. 외부 에셋 파일이 하나도 없습니다.',
-            'Every mesh, texture, sound effect, the score and the globe are generated procedurally at runtime. There is not a single external asset file.')}));
+          '🎵 '+T('배경 음악','Background music')+' — <b>'+BGM.title+'</b> / '+BGM.author
+          +' &nbsp;<a href="'+BGM.url+'" target="_blank" rel="noopener noreferrer" style="color:var(--info)">'
+          +T('출처 ↗','Source ↗')+'</a><br>'
+          +T('그 외 모든 메시·텍스처·효과음·지구본은 실행 시 절차적으로 생성됩니다. 번들된 에셋 파일은 없습니다.',
+             'Every other mesh, texture, sound effect and the globe is generated procedurally at runtime. No asset files are bundled.')}));
         f.appendChild(this.sp());
         f.appendChild(el('button',{class:'btn pri',text:T('닫기','Close'),onclick:()=>this.closeModal()}));
       }
@@ -8181,6 +8224,7 @@ const FINALE = {
     W.gold += 0; /* tickets already counted; finale crowd is a visual encore */
     W.revenueToday = W.revenueToday;
     $('#finaleui').classList.add('on');
+    BGM.show(false);
     $('#ui').style.opacity = '0';
     $('#ui').style.pointerEvents = 'none';
     SCENE.hide();
@@ -8273,6 +8317,7 @@ const FINALE = {
     this.active = false;
     RD.aberr = 0; RD.flash = 0;
     $('#finaleui').classList.remove('on');
+    BGM.show(SETTINGS.bgmSource !== 'off');
     $('#finaleui .fban').classList.remove('on');
     $('#ui').style.opacity = '';
     $('#ui').style.pointerEvents = '';
@@ -8642,6 +8687,7 @@ const MINI = {
     this.rng = makeRNG(W.seed + W.day*977 + gameId.length*31);
     W.minigamePlayed[W.day+':'+g.id] = true;
     $('#mghud').classList.add('on');
+    BGM.show(false);
     $('#mgbal').classList.remove('hide');
     $('#ui').style.opacity='0.15'; $('#ui').style.pointerEvents='none';
     SCENE.hide(); UI.closeModal();
@@ -8660,6 +8706,7 @@ const MINI = {
     const g = this.game;
     this.active = false; this.game = null;
     $('#mghud').classList.remove('on');
+    BGM.show(SETTINGS.bgmSource !== 'off');
     $('#mgcount').classList.add('hide');
     $('#mgbal').classList.remove('hide');
     $('#ui').style.opacity=''; $('#ui').style.pointerEvents='';
@@ -8974,6 +9021,98 @@ function saveBest(R){
 function loadBest(){ try{ return JSON.parse(localStorage.getItem('ff_best')); }catch(e){ return null; } }
 function metaGems(){ try{ return (JSON.parse(localStorage.getItem('ff_meta')||'{}').gems)||0; }catch(e){ return 0; } }
 /* ===========================================================================
+   38a. BACKGROUND MUSIC
+   The track is a third-party work, so it is not bundled — it streams from
+   YouTube's official embed, which keeps playback, attribution and revenue with
+   the creator. The player stays visible on purpose: hidden, audio-only use of
+   a YouTube embed is against YouTube's terms. Volume is driven through the
+   IFrame API over postMessage, so Settings can control it like any other bus.
+   =========================================================================== */
+const BGM = {
+  id:'_KyM87BO-Ng',
+  title:'첫 번째 게임 OST - A New Adventure',
+  author:'RYU Russell 러셀',
+  authorUrl:'https://www.youtube.com/@ryurussell',
+  get url(){ return 'https://www.youtube.com/watch?v='+this.id; },
+  root:null, body:null, frame:null, mounted:false, collapsed:false, _pump:null,
+  init(){
+    if(this.root) return;
+    const r = el('div',{id:'bgm', class:'hidden'});   /* starts expanded: the player must be visible while it plays */
+    r.appendChild(el('div',{class:'bgm-head', onclick:()=>this.toggleCollapse()},
+      el('span',{class:'eq'}, el('i'), el('i'), el('i')),
+      el('b',{text:T('배경 음악','Music')}),
+      el('span',{id:'bgmchev',class:'muted',text:'▾',style:{fontSize:'.8em'}})));
+    this.body = el('div',{class:'bgm-body'});
+    r.appendChild(this.body);
+    document.body.appendChild(r);
+    this.root = r;
+    this.renderCredit();
+  },
+  renderCredit(){
+    if(this.creditEl) return;
+    this.creditEl = el('div',{class:'cr'},
+      el('b',{text:this.title}),
+      el('span',{text:this.author}),
+      el('a',{href:this.url, target:'_blank', rel:'noopener noreferrer',
+              text:T('출처 · YouTube ↗','Source · YouTube ↗')}));
+    this.body.appendChild(this.creditEl);
+  },
+  /* Mounted on the first real user gesture — browsers refuse autoplay with
+     sound before one, and the title screen always takes a click. */
+  mount(){
+    if(this.mounted || SETTINGS.bgmSource !== 'youtube') return;
+    this.mounted = true;
+    const origin = encodeURIComponent(location.origin);
+    this.frame = el('iframe',{ class:'yt', id:'bgmframe',
+      src:'https://www.youtube.com/embed/'+this.id
+          +'?autoplay=1&loop=1&playlist='+this.id
+          +'&enablejsapi=1&rel=0&modestbranding=1&playsinline=1&origin='+origin,
+      title:this.title, allow:'autoplay; encrypted-media',
+      referrerpolicy:'strict-origin-when-cross-origin', allowfullscreen:'' });
+    this.body.insertBefore(this.frame, this.creditEl);
+    this.root.classList.add('playing');
+    /* the player ignores commands until it is ready, so push volume for a
+       while after mount rather than betting on a single call landing */
+    clearInterval(this._pump);
+    let tries = 0;
+    this._pump = setInterval(()=>{ this.applyVolume(); if(++tries > 24) clearInterval(this._pump); }, 500);
+  },
+  unmount(){
+    clearInterval(this._pump);
+    if(this.frame){ this.frame.remove(); this.frame = null; }
+    this.mounted = false;
+    this.root && this.root.classList.remove('playing');
+  },
+  post(func, args){
+    if(!this.frame || !this.frame.contentWindow) return;
+    try{
+      this.frame.contentWindow.postMessage(
+        JSON.stringify({ event:'command', func, args:args||[] }), 'https://www.youtube.com');
+    }catch(e){}
+  },
+  applyVolume(){
+    if(!this.frame) return;
+    const v = Math.round(clamp01(SETTINGS.master * SETTINGS.music) * 100);
+    this.post('setVolume', [v]);
+    this.post(v <= 0 ? 'mute' : 'unMute');
+  },
+  setSource(src){
+    SETTINGS.bgmSource = src;
+    if(src === 'youtube'){ this.mount(); this.applyVolume(); }
+    else this.unmount();
+    SETTINGS.apply();
+    this.show(src !== 'off');
+  },
+  toggleCollapse(){
+    this.collapsed = !this.collapsed;
+    this.root.classList.toggle('collapsed', this.collapsed);
+    const c = document.getElementById('bgmchev');
+    if(c) c.textContent = this.collapsed ? '▸' : '▾';
+  },
+  show(v){ if(this.root) this.root.classList.toggle('hidden', !v); }
+};
+
+/* ===========================================================================
    38b. GLOBE — start-screen world map
    Land is a 3-degree lat/lon mask given as [latBandCentre, [[lon0,lon1],...]].
    A tile mask is far easier to keep geographically honest than hand-drawn
@@ -9124,6 +9263,7 @@ const GLOBE = {
     this.labelRoot.style.display = 'block';
     this.buildLabels();
     this.attach();
+    BGM.show(SETTINGS.bgmSource !== 'off');
     if(!document.getElementById('globehint')){
       document.body.appendChild(el('div',{id:'globehint',html:
         '<span>🖱 '+T('드래그로 지구본 회전','Drag to spin')+'</span>'
@@ -9398,6 +9538,7 @@ function openAtlas(){
 }
 function startNewGame(){
   GLOBE.stop();
+  BGM.show(SETTINGS.bgmSource !== 'off');
   W.reset();
   FX.clear();
   BUILD.mode = null; BUILD.selected = null;
@@ -9719,6 +9860,7 @@ function boot(){
     RD.heatArea = HEAT.area;
     BOOT.set(0.90, 'interface');
     UI.init();
+    BGM.init();
     addEventListener('resize', ()=>{ RD.resize(); UI.rebuild(); });
     document.addEventListener('visibilitychange', ()=>{
       if(document.hidden && SETTINGS.autoPause && W.stage==='live' && !W.paused){
@@ -9726,7 +9868,8 @@ function boot(){
       }
     });
     /* start audio on the first gesture */
-    const kick = ()=>{ AUDIO.init(); AUDIO.resume(); removeEventListener('pointerdown', kick); removeEventListener('keydown', kick); };
+    const kick = ()=>{ AUDIO.init(); AUDIO.resume(); BGM.mount();
+      removeEventListener('pointerdown', kick); removeEventListener('keydown', kick); };
     addEventListener('pointerdown', kick); addEventListener('keydown', kick);
     BOOT.set(1.0, 'ready');
     window.__booted = true;
