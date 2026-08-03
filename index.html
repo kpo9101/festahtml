@@ -505,17 +505,19 @@ table.ledger .cid{font-family:var(--mono);font-size:.82em;color:var(--ink-3)}
 #title .tinner{position:relative;z-index:2;text-align:center;display:flex;flex-direction:column;align-items:center;gap:16px;padding:20px;max-width:min(760px,92vw)}
 #title .logo{position:relative}
 #title h1{
-  margin:0;font-size:clamp(2.6em,7.4vw,5.2em);font-weight:900;letter-spacing:-.035em;line-height:.94;
+  margin:0;font-size:clamp(1.5rem,6.4vw,4.9rem);font-weight:900;letter-spacing:-.03em;
+  line-height:1.12;white-space:nowrap;
   background:linear-gradient(168deg,#fff 10%,#ffd98e 42%,var(--coral) 72%,#ff5f9e);
   -webkit-background-clip:text;background-clip:text;color:transparent;
   filter:drop-shadow(0 6px 42px rgba(255,140,90,.42));
   animation:logoIn 1.1s cubic-bezier(.2,1,.3,1)
 }
 @keyframes logoIn{from{opacity:0;transform:translateY(26px) scale(.94)}to{opacity:1;transform:none}}
-#title h1 em{font-style:normal;display:inline-block;animation:bob 3.4s ease-in-out infinite}
-@keyframes bob{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-7px) rotate(-3deg)}}
+#title h1 em{font-style:normal;display:inline-block;line-height:1;animation:bob 3.4s ease-in-out infinite}
+@keyframes bob{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-4px) rotate(-2.5deg)}}
 #title .sub{
-  font-size:clamp(.86em,1.7vw,1.05em);color:#bcd6f5;letter-spacing:.4em;text-transform:uppercase;font-weight:700;
+  font-size:clamp(.72em,1.5vw,1.05em);color:#bcd6f5;letter-spacing:.28em;text-transform:uppercase;font-weight:700;
+  line-height:1.5;max-width:100%;
   animation:logoIn 1.1s .12s backwards cubic-bezier(.2,1,.3,1)
 }
 #title .kr{font-size:1.02em;color:#9fc3e8;margin-top:-6px;letter-spacing:.16em;animation:logoIn 1.1s .18s backwards cubic-bezier(.2,1,.3,1)}
@@ -599,10 +601,10 @@ table.ledger .cid{font-family:var(--mono);font-size:.82em;color:var(--ink-3)}
 }
 #title.globe-mode .tinner{
   position:absolute;left:max(26px,5vw);top:50%;transform:translateY(-50%);
-  align-items:flex-start;text-align:left;max-width:min(430px,44vw);pointer-events:auto
+  align-items:flex-start;text-align:left;max-width:min(460px,46vw);pointer-events:auto
 }
 #title.globe-mode .langtoggle,#title.globe-mode .foot{pointer-events:auto}
-#title.globe-mode h1{font-size:clamp(2.1em,5vw,4.1em)}
+#title.globe-mode h1{font-size:clamp(1.5rem,4.2vw,3.9rem)}
 #title.globe-mode .blurb{max-width:400px}
 #title.globe-mode .menu{width:min(310px,40vw)}
 #globehint{
