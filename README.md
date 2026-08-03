@@ -37,7 +37,7 @@ Then visit `http://localhost:5173`.
 | Modes | Overview (RTS camera) and Ground (first-person, pointer-lock) — **Ground is strictly optional and carries no penalty** |
 | Minigames | Three, one per host facility — 다대포 서핑 (steering vs balance), 불꽃 타이밍 (rhythm/timing), 포차 러시 (order matching). Once per game per day; rewards normalised against a perfect-run reference |
 | Finale | 5 purchase tiers driving a 96 s cinematic with up to 140 procedural fireworks shells |
-| Audio | Sea, crowd and SFX are synthesised via WebAudio, alongside a built-in upbeat festival score. Default background music is a credited YouTube track (see Credits); volume lives in Settings |
+| Audio | Entirely synthesised via WebAudio — an upbeat 118 BPM festival score with steel drums, a melody hook, claps and shaker, plus sea, crowd and SFX. Volume in Settings |
 | Accessibility | Colour-blind palettes, pattern overlays on all heat maps, high-contrast UI, reduced-motion, UI scaling, full KO/EN localisation |
 
 ---
@@ -59,8 +59,6 @@ Then visit `http://localhost:5173`.
 | `G` | Minigame picker |
 | `1`–`4` | Stations (Pocha Rush) · `Space` detonate (Fireworks) |
 | `L` `H` `Esc` | Language / help / cancel–settings |
-
-Music volume has a slider on the music widget itself, and in Settings → Audio.
 
 ---
 
@@ -97,22 +95,10 @@ and set *Publish Directory* to `.`.
 
 ## Credits
 
-**Background music** — 「첫 번째 게임 OST - A New Adventure」 by **RYU Russell 러셀**
-Source: https://www.youtube.com/watch?v=_KyM87BO-Ng
-Channel: https://www.youtube.com/@ryurussell
-
-Used as the default background track. The recording is **not bundled** with this
-repository — it streams through YouTube's official embed, so playback, attribution and
-revenue stay with the creator, and the player is kept visible rather than hidden. It
-starts on your first click (browsers block autoplay with sound before a user gesture)
-and its volume is the **Music** slider in Settings → Audio, driven over the YouTube
-IFrame API. You can switch to the built-in procedural score, or turn music off, in the
-same place.
-
-Everything else — every mesh, texture, sound effect, the built-in score and the globe —
-is generated procedurally at runtime. No other asset file is bundled.
+Every mesh, texture, sound effect, the music and the globe are generated procedurally at
+runtime. There is not a single external asset file — no images, no audio, no fonts, no CDN,
+no third-party embeds.
 
 ---
 
-MIT licensed, excluding the third-party track credited above, which remains the property
-of its creator. Fonts fall back to system stacks.
+MIT licensed. Fonts fall back to system stacks.
